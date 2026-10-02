@@ -66,6 +66,7 @@ export class Evoke3DExperience {
   private isPointerDown = false;
   private pointerStart = { x: 0, y: 0 };
   private sphericalStart = { phi: 1.22, theta: 0.38 };
+  private isUserOrbited = false;
   private mouseParallax = { x: 0, y: 0, targetX: 0, targetY: 0 };
 
   // Mode: normal orbit, monitor zoom, or reveal
@@ -75,6 +76,8 @@ export class Evoke3DExperience {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(0, 0);
   private interactiveMeshes: Map<THREE.Object3D, InteractiveObjectId> = new Map();
+  private interactiveMeshList: THREE.Object3D[] = [];
+  private lastMonitorDrawTime = 0;
   private hoveredId: InteractiveObjectId | null = null;
   private themePalette: ScenePalette = {
     accent: '#A62B5F',
@@ -222,10 +225,11 @@ export class Evoke3DExperience {
       powerPreference: 'high-performance',
       antialias: true,
       alpha: true,
+      precision: 'highp',
     });
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1761,6 +1765,7 @@ export class Evoke3DExperience {
   // ========================================================
   private registerInteractive(object: THREE.Object3D, id: InteractiveObjectId) {
     this.interactiveMeshes.set(object, id);
+    this.interactiveMeshList.push(object);
   }
 
   // ========================================================
@@ -1926,14 +1931,16 @@ export class Evoke3DExperience {
     this.scrollProgress = Math.min(Math.max(progress, 0), 1);
     soundscape.updateScroll(this.scrollProgress);
 
-    // If in normal orbit mode, adjust subtle camera framing with scroll story
-    if (this.mode === 'orbit') {
+    // If in normal orbit mode and NOT actively user-dragging, adjust subtle camera framing with scroll story
+    if (this.mode === 'orbit' && !this.isPointerDown) {
       const p = this.scrollProgress;
       if (p <= 0.25) {
         // Stage 1: Moody room overview
         this.targetSpherical.radius = THREE.MathUtils.lerp(3.4, 3.2, p / 0.25);
-        this.targetSpherical.phi = THREE.MathUtils.lerp(1.22, 1.25, p / 0.25);
-        this.targetSpherical.theta = THREE.MathUtils.lerp(0.38, 0.26, p / 0.25);
+        if (!this.isUserOrbited || p > 0.02) {
+          this.targetSpherical.phi = THREE.MathUtils.lerp(1.22, 1.25, p / 0.25);
+          this.targetSpherical.theta = THREE.MathUtils.lerp(0.38, 0.26, p / 0.25);
+        }
         this.targetLookAt.set(0, 0.95, 0);
       } else if (p <= 0.6) {
         // Stage 2: Kinetic focus on setup
@@ -2015,7 +2022,7 @@ export class Evoke3DExperience {
       // Raycast to check for interactive objects
       this.raycaster.setFromCamera(this.pointer, this.camera);
       const intersects = this.raycaster.intersectObjects(
-        Array.from(this.interactiveMeshes.keys()),
+        this.interactiveMeshList,
         true
       );
 
@@ -2060,7 +2067,8 @@ export class Evoke3DExperience {
         // 4. Any other interactive object (character_hero/statue, monitor, pc, headset, etc.)
         if (objectId) {
           this.clickedObjectId = objectId;
-          return; // Do NOT set isPointerDown to true so camera doesn't start orbiting!
+          this.isPointerDown = true;
+          return;
         }
       }
 
@@ -2190,12 +2198,13 @@ export class Evoke3DExperience {
         }
 
         const sensitivity = 0.0055;
-        this.targetSpherical.theta = this.sphericalStart.theta - deltaX * sensitivity;
+        this.targetSpherical.theta -= deltaX * sensitivity;
+        this.isUserOrbited = true;
         if (!isTouch) {
           this.targetSpherical.phi = THREE.MathUtils.clamp(
-            this.sphericalStart.phi - deltaY * sensitivity,
-            0.6,
-            Math.PI / 2 - 0.05
+            this.targetSpherical.phi - deltaY * sensitivity,
+            0.4,
+            Math.PI / 2 - 0.02
           );
         }
         this.pointerStart.x = clientX;
@@ -2242,7 +2251,7 @@ export class Evoke3DExperience {
         this.updatePointerCoords(clientX, clientY);
         this.raycaster.setFromCamera(this.pointer, this.camera);
         const intersects = this.raycaster.intersectObjects(
-          Array.from(this.interactiveMeshes.keys()),
+          this.interactiveMeshList,
           true
         );
 
@@ -2336,7 +2345,7 @@ export class Evoke3DExperience {
   private performHoverCheck(clientX: number, clientY: number) {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const intersects = this.raycaster.intersectObjects(
-      Array.from(this.interactiveMeshes.keys()),
+      this.interactiveMeshList,
       true
     );
 
@@ -2475,12 +2484,17 @@ export class Evoke3DExperience {
     }
 
     // 6. Monitor Screen Canvas Animation & Power Transitions
+    const isBooting = this.monitorBootProgress > 0 && this.monitorBootProgress < 1.0;
     if (this.isMonitorPowered) {
       this.monitorBootProgress = Math.min(this.monitorBootProgress + 0.035, 1.0);
     } else {
       this.monitorBootProgress = Math.max(this.monitorBootProgress - 0.04, 0.0);
     }
-    this.drawMonitorScreen(time);
+    const now = performance.now();
+    if (this.isDraggingMouse || isBooting || now - this.lastMonitorDrawTime > 66) {
+      this.lastMonitorDrawTime = now;
+      this.drawMonitorScreen(time);
+    }
 
     // 7. Keyboard Reactive Light Waves
     if (this.isKeyboardHovered || this.keyboardWaveTime > 0) {
