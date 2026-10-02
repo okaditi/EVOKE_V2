@@ -1993,13 +1993,20 @@ export class Evoke3DExperience {
   private bindEvents() {
     const el = this.renderer.domElement;
 
+    let touchStartPos = { x: 0, y: 0 };
+    let isTouchInput = false;
+    let isTouchScrolling = false;
+
     // Pointer Down (Mouse / Touch)
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      isTouchInput = 'touches' in e;
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
       this.pointerStart.x = clientX;
       this.pointerStart.y = clientY;
+      touchStartPos = { x: clientX, y: clientY };
+      isTouchScrolling = false;
       this.sphericalStart.phi = this.targetSpherical.phi;
       this.sphericalStart.theta = this.targetSpherical.theta;
 
@@ -2063,6 +2070,7 @@ export class Evoke3DExperience {
 
     // Pointer Move
     const onPointerMove = (e: MouseEvent | TouchEvent) => {
+      const isTouch = 'touches' in e;
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
@@ -2162,18 +2170,36 @@ export class Evoke3DExperience {
         return;
       }
 
-      // 4. Camera Orbit Rotation
+      // 4. Camera Orbit Rotation & Touch Mobile Scroll
       if (this.isPointerDown) {
         const deltaX = clientX - this.pointerStart.x;
         const deltaY = clientY - this.pointerStart.y;
 
+        if (isTouch) {
+          const absX = Math.abs(clientX - touchStartPos.x);
+          const absY = Math.abs(clientY - touchStartPos.y);
+
+          // If touch gesture is predominantly vertical, scroll the window!
+          if (isTouchScrolling || (absY > 6 && absY > absX * 0.75)) {
+            isTouchScrolling = true;
+            window.scrollBy(0, -deltaY);
+            this.pointerStart.x = clientX;
+            this.pointerStart.y = clientY;
+            return;
+          }
+        }
+
         const sensitivity = 0.0055;
         this.targetSpherical.theta = this.sphericalStart.theta - deltaX * sensitivity;
-        this.targetSpherical.phi = THREE.MathUtils.clamp(
-          this.sphericalStart.phi - deltaY * sensitivity,
-          0.6,
-          Math.PI / 2 - 0.05
-        );
+        if (!isTouch) {
+          this.targetSpherical.phi = THREE.MathUtils.clamp(
+            this.sphericalStart.phi - deltaY * sensitivity,
+            0.6,
+            Math.PI / 2 - 0.05
+          );
+        }
+        this.pointerStart.x = clientX;
+        this.pointerStart.y = clientY;
         return;
       }
 
@@ -2186,7 +2212,7 @@ export class Evoke3DExperience {
       const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as MouseEvent).clientY;
 
-      const dist = Math.hypot(clientX - this.pointerStart.x, clientY - this.pointerStart.y);
+      const dist = Math.hypot(clientX - touchStartPos.x, clientY - touchStartPos.y);
 
       if (this.isDraggingController) {
         this.isDraggingController = false;
@@ -2211,7 +2237,7 @@ export class Evoke3DExperience {
           this.triggerObjectInteraction(this.clickedObjectId);
         }
         this.clickedObjectId = null;
-      } else if (dist < 8) {
+      } else if (dist < 8 && !isTouchScrolling) {
         // Distinct click / tap on object
         this.updatePointerCoords(clientX, clientY);
         this.raycaster.setFromCamera(this.pointer, this.camera);
@@ -2231,6 +2257,7 @@ export class Evoke3DExperience {
 
       this.isPointerDown = false;
       this.clickedObjectId = null;
+      isTouchScrolling = false;
     };
 
     // Reset interaction state if window loses focus
@@ -2240,6 +2267,7 @@ export class Evoke3DExperience {
       this.isDraggingController = false;
       this.isDraggingMouse = false;
       this.clickedObjectId = null;
+      isTouchScrolling = false;
     };
 
     // Mouse Wheel Zoom
@@ -2277,7 +2305,7 @@ export class Evoke3DExperience {
     window.addEventListener(
       'touchmove',
       (e: TouchEvent) => {
-        if ((this.isDraggingChair || this.isDraggingController) && e.cancelable) {
+        if ((this.isDraggingChair || this.isDraggingController || this.isDraggingMouse) && e.cancelable) {
           e.preventDefault();
         }
         onPointerMove(e);

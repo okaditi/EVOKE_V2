@@ -219,33 +219,10 @@ export const CinematicScrollStory: React.FC<CinematicScrollStoryProps> = ({
         style={{ opacity: clampMap(p, 0.12, 0.9, 0.3, 0.85) }}
       />
 
-      {/* Top Tactical Scroll Stage HUD Bar */}
-      <div className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-1.5 rounded-full border border-white/15 bg-[#17141C]/90 backdrop-blur-lg z-40 pointer-events-auto shadow-md">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 theme-accent-bg" />
-            <span className="relative inline-flex rounded-full h-2 w-2 theme-accent-bg" />
-          </span>
-          <span className="font-mono text-[10px] font-bold tracking-widest text-[#F4F0EA]/90 uppercase">
-            {p < 0.27
-              ? 'STAGE 01 // ESSENCE'
-              : p < 0.47
-              ? 'STAGE 02 // PLAY'
-              : p < 0.67
-              ? 'STAGE 03 // PROVE'
-              : p < 0.85
-              ? 'STAGE 04 // PROGRESS'
-              : 'STAGE 05 // ARRIVAL'}
-          </span>
-        </div>
-        <div className="h-3 w-[1px] bg-white/20" />
-        <span className="font-mono text-[10px] theme-highlight-text font-bold">
-          {Math.round(p * 100)}% DISCOVERY
-        </span>
-      </div>
 
-      {/* Main Container - Ensures centered, max-height view without vertical cutoff */}
-      <div className="relative w-full max-w-5xl max-h-[calc(100vh-130px)] overflow-y-auto scrollbar-none flex items-center justify-center py-2">
+
+      {/* Main Container - Ensures centered view without blocking touch scroll */}
+      <div className="relative w-full max-w-5xl flex items-center justify-center py-2 pointer-events-none">
         {/* ========================================================= */}
         {/* STAGE 1: MORE THAN A GAME.                                */}
         {/* ========================================================= */}

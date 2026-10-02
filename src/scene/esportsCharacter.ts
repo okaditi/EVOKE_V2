@@ -523,26 +523,26 @@ export class Esports3DCharacter {
 
     this.torso.add(this.rightArm);
 
-    // 6. Left Leg (0.175m x 0.54m x 0.18m)
-    this.leftLeg.position.set(-0.09, -0.27, 0);
-    const lLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.175, 0.54, 0.175), tacticalDarkMat);
-    lLegMesh.position.set(0, -0.27, 0);
+    // 6. Left Leg (0.175m x 0.80m x 0.175m - extended to connect seamlessly to body)
+    this.leftLeg.position.set(-0.09, 0, 0);
+    const lLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.175, 0.80, 0.175), tacticalDarkMat);
+    lLegMesh.position.set(0, -0.40, 0);
     lLegMesh.castShadow = true;
 
     // Burgundy Knee Guard
     const lKnee = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.10, 0.08), burgundyMat);
-    lKnee.position.set(0, -0.25, 0.07);
+    lKnee.position.set(0, -0.36, 0.07);
     this.leftLeg.add(lLegMesh, lKnee);
     this.hips.add(this.leftLeg);
 
-    // 7. Right Leg
-    this.rightLeg.position.set(0.09, -0.27, 0);
-    const rLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.175, 0.54, 0.175), tacticalDarkMat);
-    rLegMesh.position.set(0, -0.27, 0);
+    // 7. Right Leg (0.175m x 0.80m x 0.175m - extended to connect seamlessly to body)
+    this.rightLeg.position.set(0.09, 0, 0);
+    const rLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.175, 0.80, 0.175), tacticalDarkMat);
+    rLegMesh.position.set(0, -0.40, 0);
     rLegMesh.castShadow = true;
 
     const rKnee = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.10, 0.08), burgundyMat);
-    rKnee.position.set(0, -0.25, 0.07);
+    rKnee.position.set(0, -0.36, 0.07);
     this.rightLeg.add(rLegMesh, rKnee);
     this.hips.add(this.rightLeg);
 
