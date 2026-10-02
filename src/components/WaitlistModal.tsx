@@ -163,7 +163,7 @@ export const WaitlistModal: React.FC<WaitlistModalProps> = ({ isOpen, onClose })
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full group bg-gradient-to-r from-[#A62B5F] to-[#E66A3A] hover:brightness-110 active:scale-[0.99] text-[#F4F0EA] py-3.5 sm:py-4 border-2 border-[#A62B5F] font-display font-black text-xs tracking-[0.25em] uppercase transition-all duration-200 shadow-[0_0_25px_rgba(166,43,95,0.4)] cursor-pointer"
+                  className="theme-accent-gradient w-full group hover:brightness-110 active:scale-[0.99] text-[#F4F0EA] py-3.5 sm:py-4 border-2 border-[#A62B5F] font-display font-black text-xs tracking-[0.25em] uppercase transition-all duration-200 shadow-[0_0_25px_rgba(166,43,95,0.4)] cursor-pointer"
                 >
                   <span className="flex items-center justify-center gap-2">
                     <span>JOIN EVOKE</span>

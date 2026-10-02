@@ -53,16 +53,12 @@ export const FixedBackgroundVideo: React.FC<FixedBackgroundVideoProps> = ({ scro
         className="absolute inset-0 w-full h-full object-cover pointer-events-none"
       />
 
-      {/* 2. Cinematic Darkening Overlay (30-35%) ensuring text readability across all screens */}
-      <div className="absolute inset-0 bg-[#171519]/35 pointer-events-none" />
+      {/* 2. Deep arena shade keeps the cinematic layer behind the 3D scene */}
+      <div className="theme-video-shade absolute inset-0 pointer-events-none" />
 
       {/* 3. Subtle Brand Vignette (Edge Darkening) for cinematic contrast */}
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse at center, transparent 30%, rgba(23, 21, 25, 0.4) 70%, rgba(23, 21, 25, 0.8) 100%)',
-        }}
+        className="theme-video-vignette absolute inset-0 pointer-events-none"
       />
     </div>
   );

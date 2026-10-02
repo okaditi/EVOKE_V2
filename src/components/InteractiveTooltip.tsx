@@ -35,32 +35,8 @@ export const InteractiveTooltip: React.FC<InteractiveTooltipProps> = ({
   } else if (isDraggingController) {
     statusText = 'Holding Controller • Place on Oak Desk';
     statusColor = '#E66A3A';
-  } else if (activeId === 'monitor_power') {
-    statusText = isMonitorPowered ? 'Obsidian Display [ON]' : 'Obsidian Display [OFF]';
-    statusColor = '#F4F0EA';
-  } else if (activeId === 'monitor') {
-    statusText = 'Click to zoom into 240Hz Display';
-    statusColor = '#A62B5F';
-  } else if (activeId === 'pc') {
-    statusText = isPCPowered ? 'Voxel PS5 [Active] • Click to toggle' : 'Voxel PS5 [Standby] • Click to turn ON';
-    statusColor = '#A62B5F';
-  } else if (activeId === 'chair') {
-    statusText = 'Gaming Chair • Click to spin 360° or drag';
-    statusColor = '#A62B5F';
-  } else if (activeId === 'controller') {
-    statusText = 'Voxel Controller • Click & drag';
-    statusColor = '#E66A3A';
-  } else if (activeId === 'mouse') {
-    statusText = 'Voxel Gaming Mouse • Drag to aim crosshair';
-    statusColor = '#E66A3A';
-  } else if (activeId === 'headset') {
-    statusText = 'Voxel Headset • Click for audio';
-    statusColor = '#F4F0EA';
-  } else if (activeId === 'character_hero') {
-    statusText = 'Valorant Radiant Agent • Click to inspect';
-    statusColor = '#A62B5F';
   } else {
-    statusText = item.label;
+    statusText = 'Click to interact';
   }
 
   return (

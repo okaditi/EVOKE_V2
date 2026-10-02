@@ -320,7 +320,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-[#A62B5F] to-[#E66A3A] text-[#F4F0EA] font-display font-bold text-xs tracking-[0.2em] uppercase hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
+            className="theme-accent-gradient w-full mt-3 py-3 rounded-xl text-[#F4F0EA] font-display font-bold text-xs tracking-[0.2em] uppercase hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
           >
             {isLoading ? (
               <span>SYNCHRONIZING...</span>

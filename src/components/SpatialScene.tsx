@@ -11,10 +11,26 @@ import { Navigation } from './Navigation';
 import { WaitlistModal } from './WaitlistModal';
 import { AuthModal } from './AuthModal';
 import { PlayerProfileModal } from './PlayerProfileModal';
+import { ThemeSwitcher, colorThemes, ColorThemeId } from './ThemeSwitcher';
 
 export const SpatialScene: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const experienceRef = useRef<Evoke3DExperience | null>(null);
+  const [colorTheme, setColorTheme] = useState<ColorThemeId>(() => {
+    const savedTheme = window.localStorage.getItem('evoke-color-theme');
+    return colorThemes.find((theme) => theme.id === savedTheme)?.id ?? 'valorant';
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem('evoke-color-theme', colorTheme);
+    const theme = colorThemes.find((option) => option.id === colorTheme) ?? colorThemes[0];
+    experienceRef.current?.setEnvironmentPalette(
+      theme.accent,
+      theme.highlight,
+      theme.secondary,
+      theme.surface
+    );
+  }, [colorTheme]);
 
   // Authentication & Esports Player Profile
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(() => getStoredSession());
@@ -185,6 +201,8 @@ export const SpatialScene: React.FC = () => {
           handleToggleHeadphones();
         } else if (id === 'character_hero') {
           handleInspectCharacter();
+        } else if (id === 'lights') {
+          exp.toggleRoomLights();
         }
       },
       onControllerDragStart: () => {
@@ -223,6 +241,8 @@ export const SpatialScene: React.FC = () => {
       exp.setCharacter(activeCharacter);
     }
 
+    const theme = colorThemes.find((option) => option.id === colorTheme) ?? colorThemes[0];
+    exp.setEnvironmentPalette(theme.accent, theme.highlight, theme.secondary, theme.surface);
     experienceRef.current = exp;
 
     return () => {
@@ -273,7 +293,7 @@ export const SpatialScene: React.FC = () => {
   const isSetupInteractive = scrollProgress < 0.08;
 
   return (
-    <div className="relative w-full min-h-[550vh] bg-transparent text-[#F4F0EA]">
+    <div data-theme={colorTheme} className="relative w-full min-h-[550vh] bg-transparent text-ivory">
       {/* ========================================================= */}
       {/* FIXED ESPORTS BACKGROUND VIDEO                            */}
       {/* Does NOT move on scroll, occupies 100% background across  */}
@@ -290,6 +310,8 @@ export const SpatialScene: React.FC = () => {
         onOpenAuth={handleOpenAuth}
         onOpenProfile={() => setIsProfileOpen(true)}
       />
+
+      <ThemeSwitcher selectedTheme={colorTheme} onSelectTheme={setColorTheme} />
 
       {/* ========================================================= */}
       {/* PART 1: THE INTERACTIVE 3D ENVIRONMENT                     */}
@@ -308,7 +330,9 @@ export const SpatialScene: React.FC = () => {
       >
         <div
           ref={containerRef}
-          className={`w-full h-full touch-none ${getCursorClass()}`}
+          className={`w-full h-full ${
+            isDraggingChair || isDraggingController || isDraggingMouse ? 'touch-none' : 'touch-pan-y'
+          } ${getCursorClass()}`}
         />
       </div>
 

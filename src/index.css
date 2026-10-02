@@ -1,5 +1,53 @@
 @import "tailwindcss";
 
+html {
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100%;
+}
+body, #root {
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100vh;
+}
+:root {
+  /* VALORANT */
+  --val-crimson: #FF4655;
+  --val-teal: #00F4B8;
+  --val-charcoal: #111417;
+  --val-offwhite: #ECE8E1;
+
+  /* Call of Duty (COD) */
+  --cod-orange: #FF5E00;
+  --cod-olive: #3B4436;
+  --cod-stealth: #0B0C10;
+  --cod-tan: #C5A880;
+
+  /* Counter-Strike (CS) */
+  --cs-orange: #DE9B35;
+  --cs-navy: #1B2228;
+  --cs-concrete: #101418;
+  --cs-light: #E1E2E2;
+
+  /* Fortnite */
+  --fn-purple: #8C2AE3;
+  --fn-cyan: #00F0FF;
+  --fn-magenta: #FF007F;
+  --fn-dark: #0B0E14;
+
+  /* Apex Legends */
+  --apex-red: #DA292A;
+  --apex-gold: #FFB800;
+  --apex-steel: #1F2226;
+  --apex-dark: #0F1012;
+
+  /* Clash Royale (CR) */
+  --cr-blue: #0066FF;
+  --cr-purple: #C800FF;
+  --cr-gold: #FFD700;
+  --cr-dark: #0A0F1D;
+}
+
 @theme {
   --color-plum: #3A102C;
   --color-mauve: #A62B5F;
@@ -10,6 +58,452 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-pixel: "Silkscreen", "VT323", monospace;
+}
+
+[data-theme="valorant"] {
+  --theme-accent: var(--val-crimson);
+  --theme-highlight: var(--val-teal);
+  --theme-tertiary: var(--val-teal);
+  --theme-background: var(--val-charcoal);
+  --theme-surface: #1C2226;
+  --theme-foreground: var(--val-offwhite);
+}
+
+[data-theme="cod"] {
+  --theme-accent: var(--cod-orange);
+  --theme-highlight: var(--cod-tan);
+  --theme-tertiary: var(--cod-olive);
+  --theme-background: var(--cod-stealth);
+  --theme-surface: var(--cod-olive);
+  --theme-foreground: var(--cod-tan);
+}
+
+[data-theme="counter-strike"] {
+  --theme-accent: var(--cs-orange);
+  --theme-highlight: var(--cs-light);
+  --theme-tertiary: var(--cs-navy);
+  --theme-background: var(--cs-concrete);
+  --theme-surface: var(--cs-navy);
+  --theme-foreground: var(--cs-light);
+}
+
+[data-theme="fortnite"] {
+  --theme-accent: var(--fn-purple);
+  --theme-highlight: var(--fn-cyan);
+  --theme-tertiary: var(--fn-magenta);
+  --theme-background: var(--fn-dark);
+  --theme-surface: color-mix(in srgb, var(--fn-dark) 82%, var(--fn-purple));
+  --theme-foreground: #F5F5F7;
+}
+
+[data-theme="apex"] {
+  --theme-accent: var(--apex-red);
+  --theme-highlight: var(--apex-gold);
+  --theme-tertiary: var(--apex-steel);
+  --theme-background: var(--apex-dark);
+  --theme-surface: var(--apex-steel);
+  --theme-foreground: #ECE8E1;
+}
+
+[data-theme="clash-royale"] {
+  --theme-accent: var(--cr-blue);
+  --theme-highlight: var(--cr-purple);
+  --theme-tertiary: var(--cr-gold);
+  --theme-background: var(--cr-dark);
+  --theme-surface: color-mix(in srgb, var(--cr-dark) 84%, var(--cr-blue));
+  --theme-foreground: #FFFFFF;
+}
+
+[data-theme] {
+  --theme-glow: color-mix(in srgb, var(--theme-accent) 35%, transparent);
+  --color-plum: var(--theme-background);
+  --color-mauve: var(--theme-accent);
+  --color-burnt: var(--theme-highlight);
+  --color-charcoal: var(--theme-background);
+  --color-ivory: var(--theme-foreground);
+}
+
+.theme-accent-text {
+  color: var(--theme-accent);
+}
+
+.theme-highlight-text {
+  color: var(--theme-highlight);
+}
+
+.hover\:theme-accent-text:hover {
+  color: var(--theme-accent);
+}
+
+.hover\:theme-highlight-text:hover {
+  color: var(--theme-highlight);
+}
+
+.group:hover .group-hover\:theme-accent-text {
+  color: var(--theme-accent);
+}
+
+.group:hover .group-hover\:theme-highlight-text {
+  color: var(--theme-highlight);
+}
+
+.theme-accent-border {
+  border-color: var(--theme-accent);
+}
+
+.theme-accent-border-soft {
+  border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent);
+}
+
+.theme-highlight-border-hover:hover {
+  border-color: var(--theme-highlight);
+}
+
+.theme-accent-bg {
+  background-color: var(--theme-accent);
+}
+
+.theme-accent-bg-soft {
+  background-color: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+}
+
+.theme-accent-gradient {
+  background-image: linear-gradient(110deg, var(--theme-accent), var(--theme-highlight));
+}
+
+.theme-accent-gradient-vertical {
+  background-image: linear-gradient(to bottom, var(--theme-accent), var(--theme-highlight), transparent);
+}
+
+.theme-highlight-gradient-vertical {
+  background-image: linear-gradient(to bottom, var(--theme-highlight), var(--theme-accent), transparent);
+}
+
+.theme-accent-gradient-diagonal {
+  background-image: linear-gradient(to top right, color-mix(in srgb, var(--theme-accent) 80%, var(--color-plum)), color-mix(in srgb, var(--theme-accent) 40%, transparent));
+}
+
+.theme-story-aura {
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--theme-accent) 22%, transparent), color-mix(in srgb, var(--theme-accent) 8%, transparent) 45%, transparent 72%);
+}
+
+.theme-scene-aura-left {
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--theme-accent) 24%, transparent), transparent 70%);
+}
+
+.theme-scene-aura-right {
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--theme-highlight) 20%, transparent), transparent 72%);
+}
+
+.theme-accent-glow {
+  box-shadow: 0 0 16px var(--theme-glow);
+}
+
+.theme-accent-glow-text {
+  text-shadow: 0 0 35px var(--theme-glow);
+}
+
+.theme-accent-line {
+  background-color: color-mix(in srgb, var(--theme-accent) 80%, transparent);
+}
+
+.theme-armory-trigger {
+  position: relative;
+  display: flex;
+  width: 48px;
+  height: 68px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 58%, transparent);
+  color: var(--theme-highlight);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--theme-surface) 94%, black), color-mix(in srgb, var(--theme-background) 98%, black));
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.52), 0 0 20px var(--theme-glow), inset 0 1px rgba(255, 255, 255, 0.06);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.theme-armory-trigger::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 62%;
+  height: 2px;
+  background: var(--theme-accent);
+  content: "";
+}
+
+.theme-armory-trigger:hover,
+.theme-armory-trigger[aria-expanded="true"] {
+  border-color: var(--theme-highlight);
+  color: var(--theme-foreground);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.62), 0 0 25px var(--theme-glow), inset 0 0 18px color-mix(in srgb, var(--theme-accent) 12%, transparent);
+}
+
+.theme-armory-trigger-label {
+  color: var(--theme-foreground);
+  font: 700 7px/1 "Space Grotesk", sans-serif;
+  letter-spacing: 0.16em;
+  writing-mode: vertical-rl;
+}
+
+.theme-armory-trigger-signal {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 8px currentColor;
+}
+
+.theme-armory-panel {
+  max-height: min(78vh, 560px);
+  overflow-y: auto;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 42%, #303943);
+  color: var(--theme-foreground);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px),
+    color-mix(in srgb, var(--theme-background) 96%, black);
+  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.72), 0 0 30px color-mix(in srgb, var(--theme-accent) 18%, transparent), inset 0 1px rgba(255, 255, 255, 0.07);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-accent) var(--theme-background);
+}
+
+.theme-armory-panel::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 52%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--theme-accent), transparent);
+  content: "";
+}
+
+.theme-armory-kicker,
+.theme-armory-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: color-mix(in srgb, var(--theme-foreground) 46%, transparent);
+  font: 700 8px/1.2 ui-monospace, monospace;
+  letter-spacing: 0.13em;
+}
+
+.theme-armory-kicker {
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 3px 2px 10px;
+  color: var(--theme-accent);
+}
+
+.theme-armory-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 2px 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--theme-foreground);
+  font: 800 14px/1 "Space Grotesk", sans-serif;
+  letter-spacing: 0.07em;
+}
+
+.theme-armory-count {
+  color: var(--theme-highlight);
+  font: 700 9px/1 ui-monospace, monospace;
+  letter-spacing: 0.1em;
+}
+
+.theme-armory-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-bottom: 8px;
+  padding: 0 7px;
+  border-left: 2px solid var(--theme-accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--theme-accent) 14%, transparent), transparent);
+}
+
+.theme-armory-active-label {
+  color: color-mix(in srgb, var(--theme-foreground) 52%, transparent);
+  font: 700 8px/1 ui-monospace, monospace;
+  letter-spacing: 0.12em;
+}
+
+.theme-armory-active-name {
+  font: 800 9px/1 "Space Grotesk", sans-serif;
+  letter-spacing: 0.11em;
+}
+
+.theme-armory-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.theme-armory-option {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  color: color-mix(in srgb, var(--theme-foreground) 72%, transparent);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.theme-armory-option:hover {
+  border-color: color-mix(in srgb, var(--theme-accent) 32%, transparent);
+  color: var(--theme-foreground);
+  background: color-mix(in srgb, var(--theme-accent) 9%, transparent);
+}
+
+.theme-armory-option-active,
+.theme-armory-option-active:hover {
+  border-color: color-mix(in srgb, var(--theme-accent) 54%, transparent);
+  color: var(--theme-foreground);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--theme-accent) 19%, transparent), color-mix(in srgb, var(--theme-accent) 5%, transparent));
+  box-shadow: inset 2px 0 var(--theme-accent);
+}
+
+.theme-armory-index {
+  width: 16px;
+  color: color-mix(in srgb, var(--theme-foreground) 38%, transparent);
+  font: 700 8px/1 ui-monospace, monospace;
+}
+
+.theme-armory-option-active .theme-armory-index {
+  color: var(--theme-accent);
+}
+
+.theme-armory-swatch {
+  width: 30px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--theme-accent) 24%, transparent);
+}
+
+.theme-armory-option-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.theme-armory-option-name {
+  overflow: hidden;
+  color: inherit;
+  font: 700 10px/1 "Space Grotesk", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-armory-option-mode {
+  color: color-mix(in srgb, var(--theme-foreground) 44%, transparent);
+  font: 600 7px/1 ui-monospace, monospace;
+  letter-spacing: 0.09em;
+}
+
+.theme-armory-footer {
+  margin-top: 8px;
+  padding: 9px 2px 1px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 7px;
+}
+
+.theme-video-shade {
+  background: color-mix(in srgb, var(--theme-background) 64%, transparent);
+}
+
+.theme-video-vignette {
+  background: radial-gradient(ellipse at center, transparent 25%, color-mix(in srgb, var(--theme-background) 58%, transparent) 72%, var(--theme-background) 115%);
+}
+
+@media (max-width: 480px) {
+  .theme-armory-panel {
+    width: min(238px, calc(100vw - 78px));
+  }
+}
+
+[data-theme] :where([class*="bg-[#"]) {
+  background-color: var(--theme-surface) !important;
+}
+
+[data-theme] :where([class*="bg-[#"][class*="/"]) {
+  background-color: color-mix(in srgb, var(--theme-surface) 90%, transparent) !important;
+}
+
+[data-theme] :where([class*="border-[#"]) {
+  border-color: color-mix(in srgb, var(--theme-highlight) 25%, var(--theme-surface)) !important;
+}
+
+[data-theme] [class*="text-[#F4F0EA]"] {
+  color: var(--theme-foreground) !important;
+}
+
+[data-theme] [class*="text-[#A62B5F]"] {
+  color: var(--theme-accent) !important;
+}
+
+[data-theme] [class*="text-[#E66A3A]"] {
+  color: var(--theme-highlight) !important;
+}
+
+[data-theme] [class*="border-[#A62B5F]"] {
+  border-color: var(--theme-accent) !important;
+}
+
+[data-theme] [class*="border-[#E66A3A]"] {
+  border-color: var(--theme-highlight) !important;
+}
+
+[data-theme] [class~="bg-[#A62B5F]"] {
+  background-color: var(--theme-accent) !important;
+}
+
+[data-theme] [class~="bg-[#E66A3A]"] {
+  background-color: var(--theme-highlight) !important;
+}
+
+[data-theme] [class*="bg-[#A62B5F]/"] {
+  background-color: color-mix(in srgb, var(--theme-accent) 20%, transparent) !important;
+}
+
+[data-theme] [class*="bg-[#E66A3A]/"] {
+  background-color: color-mix(in srgb, var(--theme-highlight) 20%, transparent) !important;
+}
+
+[data-theme] [class*="rgba(166,43,95"] {
+  box-shadow: 0 0 24px var(--theme-glow) !important;
+}
+
+[data-theme] [fill="#E66A3A"],
+[data-theme] [stroke="#E66A3A"] {
+  fill: var(--theme-highlight) !important;
+  stroke: var(--theme-highlight) !important;
+}
+
+[data-theme] [style*="#A62B5F"] {
+  color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+[data-theme] [style*="#E66A3A"] {
+  color: var(--theme-highlight) !important;
+  border-color: var(--theme-highlight) !important;
 }
 
 /* Minecraft Inset/Outset Pixel Borders */
@@ -46,14 +540,14 @@
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #171519;
+  background: var(--theme-background, #171519);
 }
 ::-webkit-scrollbar-thumb {
-  background: #3A102C;
+  background: var(--theme-surface, #3A102C);
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #A62B5F;
+  background: var(--theme-accent, #A62B5F);
 }
 
 /* Geometry clip paths */
@@ -67,7 +561,7 @@
 
 /* Glowing effects in brand palette */
 .glow-mauve {
-  box-shadow: 0 0 60px -10px rgba(166, 43, 95, 0.35);
+  box-shadow: 0 0 60px -10px var(--theme-glow, rgba(166, 43, 95, 0.35));
 }
 
 .text-glow {
@@ -75,7 +569,7 @@
 }
 
 .text-glow-mauve {
-  text-shadow: 0 0 35px rgba(166, 43, 95, 0.5);
+  text-shadow: 0 0 35px var(--theme-glow, rgba(166, 43, 95, 0.5));
 }
 
 /* Hardware accelerated layer */

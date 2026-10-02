@@ -71,7 +71,7 @@ export const EvokeMark: React.FC<EvokeMarkProps> = ({
 
       {/* Left Slanted Blade (Mauve to Plum) */}
       <div
-        className="absolute w-2.5 sm:w-3.5 h-64 sm:h-80 md:h-96 bg-gradient-to-b from-[#A62B5F] via-[#3A102C] to-transparent clip-slant will-change-transform"
+          className="theme-accent-gradient-vertical absolute w-2.5 sm:w-3.5 h-64 sm:h-80 md:h-96 clip-slant will-change-transform"
         style={{
           transform: leftBladeTransform,
           opacity: bladeOpacity,
@@ -81,7 +81,7 @@ export const EvokeMark: React.FC<EvokeMarkProps> = ({
 
       {/* Right Slanted Blade (Burnt Orange to Mauve) */}
       <div
-        className="absolute w-2.5 sm:w-3.5 h-64 sm:h-80 md:h-96 bg-gradient-to-b from-[#E66A3A] via-[#A62B5F] to-transparent clip-slant will-change-transform"
+          className="theme-highlight-gradient-vertical absolute w-2.5 sm:w-3.5 h-64 sm:h-80 md:h-96 clip-slant will-change-transform"
         style={{
           transform: rightBladeTransform,
           opacity: bladeOpacity,
@@ -105,47 +105,21 @@ export const EvokeMark: React.FC<EvokeMarkProps> = ({
           }}
         />
 
-        {/* Inner Mauve Accent Diamond with Plum glow */}
+        {/* Inner Mauve Wireframe Accent with Plum glow */}
         <div
-          className="absolute inset-3 sm:inset-4 bg-gradient-to-tr from-[#3A102C]/80 to-[#A62B5F]/40 border border-[#A62B5F]/50 shadow-[0_0_40px_rgba(166,43,95,0.4)]"
+          className="absolute inset-3 sm:inset-4 border border-[#A62B5F]/40 shadow-[0_0_40px_rgba(166,43,95,0.3)] bg-transparent"
           style={{
             transform: `rotate(${coreDiamondRot}deg)`,
           }}
         />
 
-        {/* The Evoke Chevron Crest & Burnt Orange Apex Dot */}
-        <div className="relative z-10 flex flex-col items-center justify-center">
-          <svg
-            className="w-14 h-14 sm:w-18 sm:h-18 md:w-22 md:h-22 text-[#F4F0EA] drop-shadow-[0_0_15px_rgba(244,240,234,0.4)]"
-            viewBox="0 0 100 100"
-            fill="none"
-            stroke="currentColor"
-          >
-            {/* Outer Bold Chevron */}
-            <path
-              d="M22 28L50 78L78 28"
-              strokeWidth="6"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-            />
-            {/* Inner Concentric Chevron */}
-            <path
-              d="M36 28L50 56L64 28"
-              strokeWidth="3.5"
-              strokeOpacity="0.6"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-            />
-            {/* Burnt Orange Apex Dot */}
-            <circle
-              cx="50"
-              cy="20"
-              r="3.5"
-              fill="#E66A3A"
-              stroke="#E66A3A"
-              strokeWidth="1"
-            />
-          </svg>
+        {/* The Evoke LOGO.png Crest */}
+        <div className="relative z-10 flex flex-col items-center justify-center p-2">
+          <img
+            src="/assets/LOGO.png"
+            alt="EVOKE Logo"
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain filter drop-shadow-[0_0_20px_rgba(244,240,234,0.6)]"
+          />
         </div>
       </div>
 

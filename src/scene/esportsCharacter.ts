@@ -174,6 +174,12 @@ export class Esports3DCharacter {
   private badgeCanvas!: HTMLCanvasElement;
   private badgeCtx!: CanvasRenderingContext2D;
   private badgeTexture!: THREE.CanvasTexture;
+  private standAccentMaterials: THREE.MeshStandardMaterial[] = [];
+  private standHighlightMaterials: THREE.MeshStandardMaterial[] = [];
+  private standSurfaceMaterials: THREE.MeshStandardMaterial[] = [];
+  private standAccent = '#A62B5F';
+  private standHighlight = '#E66A3A';
+  private standSurface = '#171519';
 
   // Dedicated Burgundy Lighting
   private keyLight: THREE.SpotLight;
@@ -187,6 +193,8 @@ export class Esports3DCharacter {
   private breatheTime = 0;
   private isInspecting = false;
   private inspectProgress = 0;
+  private isRunning = false;
+  private runProgress = 0;
 
   constructor(scene: THREE.Scene, position: THREE.Vector3) {
     this.root = new THREE.Group();
@@ -255,6 +263,7 @@ export class Esports3DCharacter {
       roughness: 0.35,
       metalness: 0.7,
     });
+    this.standSurfaceMaterials.push(obsidianMat);
 
     // 1. Blocky Obsidian Base (Voxel slab)
     const baseGeo = new THREE.BoxGeometry(0.88, 0.16, 0.88);
@@ -269,6 +278,7 @@ export class Esports3DCharacter {
       metalness: 0.9,
       roughness: 0.2,
     });
+    this.standHighlightMaterials.push(goldMat);
     for (let x = -1; x <= 1; x += 2) {
       for (let z = -1; z <= 1; z += 2) {
         const rivet = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), goldMat);
@@ -290,6 +300,8 @@ export class Esports3DCharacter {
       emissive: 0x721c47,
       emissiveIntensity: 0.7,
     });
+    this.standAccentMaterials.push(mauveShardMat);
+    this.standHighlightMaterials.push(crystalMat);
 
     for (let i = 0; i < 8; i++) {
       const angle = (i * Math.PI * 2) / 8;
@@ -339,15 +351,15 @@ export class Esports3DCharacter {
     ctx.clearRect(0, 0, 512, 160);
 
     // Burgundy / Charcoal Dark Tooltip Box
-    ctx.fillStyle = 'rgba(23, 20, 28, 0.94)';
+    ctx.fillStyle = this.standSurface;
     ctx.fillRect(0, 0, 512, 160);
 
-    // Double Pixel Border in Burgundy (#A62B5F) and Burnt Orange (#E66A3A)
-    ctx.strokeStyle = '#A62B5F';
+    // Double Pixel Border in the selected theme colors
+    ctx.strokeStyle = this.standAccent;
     ctx.lineWidth = 6;
     ctx.strokeRect(6, 6, 500, 148);
 
-    ctx.strokeStyle = '#E66A3A';
+    ctx.strokeStyle = this.standHighlight;
     ctx.lineWidth = 2;
     ctx.strokeRect(12, 12, 488, 136);
 
@@ -365,7 +377,7 @@ export class Esports3DCharacter {
     ctx.fillText(title, 256, 58);
 
     ctx.font = 'bold 17px monospace';
-    ctx.fillStyle = '#A62B5F';
+    ctx.fillStyle = this.standAccent;
     const sub =
       this.activeGame === 'valorant'
         ? 'BLADE STORM • TAILWIND • RADIANT #1'
@@ -376,7 +388,7 @@ export class Esports3DCharacter {
     ctx.fillText(sub, 256, 96);
 
     ctx.font = 'bold 13px monospace';
-    ctx.fillStyle = '#E66A3A';
+    ctx.fillStyle = this.standHighlight;
     ctx.fillText('EVOKE // VALORANT PROTOCOL • 2026', 256, 130);
 
     this.badgeTexture.needsUpdate = true;
@@ -440,12 +452,10 @@ export class Esports3DCharacter {
     collarRight.position.set(0.19, 0.28, 0);
     this.torso.add(collarBack, collarLeft, collarRight);
 
-    // Slung Minecraft 3D Vandal Tactical Rifle on the back!
+    // Vandal held forward beside the left hand.
     this.slungVandalGroup = this.buildMinecraftVandal();
-    this.slungVandalGroup.position.set(0.05, 0.05, -0.16);
-    this.slungVandalGroup.rotation.z = 0.65;
-    this.slungVandalGroup.rotation.y = Math.PI;
-    this.torso.add(this.slungVandalGroup);
+    this.slungVandalGroup.position.set(0, -0.34, 0.32);
+    this.leftArm.add(this.slungVandalGroup);
 
     this.hips.add(this.torso);
 
@@ -593,7 +603,7 @@ export class Esports3DCharacter {
   }
 
   /**
-   * Builds a voxel-crafted Valorant Vandal tactical rifle slung on the back
+  * Builds a voxel-crafted Valorant Vandal tactical rifle
    */
   private buildMinecraftVandal(): THREE.Group {
     const rifle = new THREE.Group();
@@ -658,7 +668,28 @@ export class Esports3DCharacter {
   }
 
   public triggerInspect() {
-    this.inspect();
+    this.run();
+  }
+
+  public run() {
+    this.isRunning = true;
+    this.runProgress = 0;
+  }
+
+  public setPedestalPalette(accent: string, highlight: string, surface: string) {
+    this.standAccent = accent;
+    this.standHighlight = highlight;
+    this.standSurface = surface;
+    this.standAccentMaterials.forEach((material) => {
+      material.color.set(accent);
+      material.emissive.set(accent);
+    });
+    this.standHighlightMaterials.forEach((material) => {
+      material.color.set(highlight);
+      material.emissive.set(highlight);
+    });
+    this.standSurfaceMaterials.forEach((material) => material.color.set(surface));
+    this.updateHoloBadge();
   }
 
   // ========================================================
@@ -692,10 +723,10 @@ export class Esports3DCharacter {
     this.radianiteGroup.rotation.y += delta * 0.85;
 
     // 5. Head tracks user cursor subtly
-    const targetHeadY = mouseNormX * 0.35;
-    const targetHeadX = -mouseNormY * 0.25;
-    this.head.rotation.y += (targetHeadY - this.head.rotation.y) * 0.08;
-    this.head.rotation.x += (targetHeadX - this.head.rotation.x) * 0.08;
+    const targetHeadY = mouseNormX * 0.55;
+    const targetHeadX = -mouseNormY * 0.38;
+    this.head.rotation.y += (targetHeadY - this.head.rotation.y) * 0.12;
+    this.head.rotation.x += (targetHeadX - this.head.rotation.x) * 0.12;
 
     // 6. Inspect mode spin flourish
     if (this.isInspecting) {
@@ -706,6 +737,39 @@ export class Esports3DCharacter {
         this.bodyRoot.rotation.y = 0;
         this.isInspecting = false;
       }
+    }
+
+    // 7. Run in place animation (4-5 steps)
+    if (this.isRunning) {
+      this.runProgress += delta * 4.5; // adjust speed here
+      
+      const cycle = this.runProgress * Math.PI * 2;
+      this.leftLeg.rotation.x = Math.sin(cycle) * 0.8;
+      this.rightLeg.rotation.x = -Math.sin(cycle) * 0.8;
+      
+      this.leftArm.rotation.x = -Math.sin(cycle) * 0.6;
+      this.rightArm.rotation.x = Math.sin(cycle) * 0.6;
+      
+      this.bodyRoot.position.y = Math.abs(Math.cos(cycle)) * 0.08;
+      
+      // Stop after 4 full cycles (8 steps total)
+      if (this.runProgress >= 4.0) {
+        this.isRunning = false;
+        this.runProgress = 0;
+        
+        // Reset transforms
+        this.leftLeg.rotation.x = 0;
+        this.rightLeg.rotation.x = 0;
+        this.leftArm.rotation.x = 0;
+        this.rightArm.rotation.x = 0;
+        this.bodyRoot.position.y = 0;
+      }
+    } else {
+      // Natural idle arm swing if not running
+      this.leftLeg.rotation.x = 0;
+      this.rightLeg.rotation.x = 0;
+      this.leftArm.rotation.x += (Math.sin(this.breatheTime * 0.8) * 0.05 - this.leftArm.rotation.x) * 0.1;
+      this.rightArm.rotation.x += (-0.15 + Math.cos(this.breatheTime) * 0.04 - this.rightArm.rotation.x) * 0.1;
     }
   }
 

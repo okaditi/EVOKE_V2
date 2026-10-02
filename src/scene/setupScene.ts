@@ -7,6 +7,11 @@ import {
   createBookshelfTexture,
   createStoneBricksTexture,
   createBurgundyWoolTexture,
+  createCraftingTableTopTexture,
+  createFurnaceFrontTexture,
+  createChestFrontTexture,
+  createPaintingTexture,
+  createEsportsPosterTexture,
 } from './minecraftTextures';
 
 export interface SceneCallbacks {
@@ -22,6 +27,15 @@ export interface SceneCallbacks {
   onMonitorPowerToggle: (isPowered: boolean) => void;
   onPCPowerToggle: (isPowered: boolean) => void;
   onCharacterInspect?: () => void;
+}
+
+type ThemeColorRole = 'accent' | 'highlight' | 'tertiary' | 'surface';
+
+interface ScenePalette {
+  accent: string;
+  highlight: string;
+  tertiary: string;
+  surface: string;
 }
 
 export class Evoke3DExperience {
@@ -59,9 +73,26 @@ export class Evoke3DExperience {
 
   // Raycasting & Interaction
   private raycaster = new THREE.Raycaster();
-  private pointer = new THREE.Vector2(-999, -999);
+  private pointer = new THREE.Vector2(0, 0);
   private interactiveMeshes: Map<THREE.Object3D, InteractiveObjectId> = new Map();
   private hoveredId: InteractiveObjectId | null = null;
+  private themePalette: ScenePalette = {
+    accent: '#A62B5F',
+    highlight: '#E66A3A',
+    tertiary: '#3A102C',
+    surface: '#171519',
+  };
+  private themeMaterials: Array<{
+    material: THREE.MeshStandardMaterial;
+    role: ThemeColorRole;
+    emissive?: boolean;
+  }> = [];
+  private bookshelfMaterial!: THREE.MeshStandardMaterial;
+  private chairUpholsteryMaterial!: THREE.MeshStandardMaterial;
+  private deskPadMaterial!: THREE.MeshStandardMaterial;
+  private rugMaterial!: THREE.MeshStandardMaterial;
+  private paintingMaterial!: THREE.MeshBasicMaterial;
+  private posterMaterial!: THREE.MeshBasicMaterial;
 
   // ----------------------------------------------------
   // CONTROLLER DRAGGING (3D physical dragging & placing)
@@ -95,6 +126,7 @@ export class Evoke3DExperience {
   // MOUSE DRAGGING & LIVE MONITOR CURSOR
   // ----------------------------------------------------
   public isDraggingMouse = false;
+  public clickedObjectId: InteractiveObjectId | null = null;
   private mouseGroup!: THREE.Group;
   private mouseMesh!: THREE.Mesh;
   public monitorCursorX = 512;
@@ -146,6 +178,30 @@ export class Evoke3DExperience {
   private plumFillLight!: THREE.PointLight;
   private rimLight!: THREE.DirectionalLight;
 
+  // ----------------------------------------------------
+  // ENCLOSED ROOM INTERACTION & MINECRAFT PUPPY
+  // ----------------------------------------------------
+  public isDoorOpen = false;
+  private doorSlabGroup!: THREE.Group;
+
+  private bedMattressMesh!: THREE.Mesh;
+  private bedBounceTime = 0;
+
+  public isChestOpen = false;
+  private chestLidGroup!: THREE.Group;
+
+  // Free-Roaming Minecraft Puppy
+  private puppyGroup!: THREE.Group;
+  private puppyHeadGroup!: THREE.Group;
+  private puppyLegs: THREE.Mesh[] = [];
+  private puppyTail!: THREE.Mesh;
+  private puppyPos = new THREE.Vector3(0.5, 0, 2.2);
+  private puppyTargetPos = new THREE.Vector3(-1.8, 0, 1.0);
+  private puppyState: 'walking' | 'idle' | 'sitting' | 'petted' = 'idle';
+  private puppyTimer = 2.0;
+  private puppyHeading = 0;
+  private puppyPetTimer = 0;
+
   constructor(container: HTMLElement, callbacks: SceneCallbacks) {
     this.container = container;
     this.callbacks = callbacks;
@@ -179,6 +235,8 @@ export class Evoke3DExperience {
     // Build Environment & Objects: Character on Left, Battlestation on Right
     this.initLights();
     this.initRoom();
+    this.initMoreMinecraftItems();
+    this.initPuppy();
     this.initBattlestation();
     this.initCharacter();
     this.initDesk();
@@ -220,11 +278,11 @@ export class Evoke3DExperience {
   // ========================================================
   private initLights() {
     // 1. Deep Plum Ambient Wash
-    this.ambientLight = new THREE.AmbientLight(0x3a102c, 1.15);
+    this.ambientLight = new THREE.AmbientLight(0x252a33, 0.72);
     this.scene.add(this.ambientLight);
 
     // 2. Main Dramatic Mauve Spotlight focused on the battlestation on the right
-    this.mauveSpotLight = new THREE.SpotLight(0xa62b5f, 5.8);
+    this.mauveSpotLight = new THREE.SpotLight(0xa62b5f, 3.8);
     this.mauveSpotLight.position.set(0.2, 3.4, 1.8);
     this.mauveSpotLight.target.position.set(1.22, 0.85, 0);
     this.mauveSpotLight.angle = Math.PI / 3.8;
@@ -238,27 +296,27 @@ export class Evoke3DExperience {
     this.scene.add(this.mauveSpotLight.target);
 
     // 3. Crisp Rim Light for Chair, Monitor & Desk edge specular glints
-    this.rimLight = new THREE.DirectionalLight(0xf4f0ea, 0.95);
+    this.rimLight = new THREE.DirectionalLight(0xf4f0ea, 0.62);
     this.rimLight.position.set(3.4, 3.2, 1.8);
     this.scene.add(this.rimLight);
 
     // 4. Burnt Orange Hardware Specular Accent Light
-    const hardwareKeyLight = new THREE.DirectionalLight(0xe66a3a, 1.1);
+    const hardwareKeyLight = new THREE.DirectionalLight(0xe66a3a, 0.58);
     hardwareKeyLight.position.set(-2.5, 2.4, -0.6);
     this.scene.add(hardwareKeyLight);
 
     // 5. Plum Floor & Shadow Filler
-    this.plumFillLight = new THREE.PointLight(0x3a102c, 2.6, 7);
+    this.plumFillLight = new THREE.PointLight(0x252a33, 1.35, 7);
     this.plumFillLight.position.set(0, 0.4, 0);
     this.scene.add(this.plumFillLight);
 
     // 6. Monitor Ambient Bias Light (casts mauve glow behind screen)
-    this.monitorBiasLight = new THREE.PointLight(0xa62b5f, 2.8, 4.0);
+    this.monitorBiasLight = new THREE.PointLight(0xa62b5f, 1.75, 4.0);
     this.monitorBiasLight.position.set(0, 1.25, -0.45);
     this.scene.add(this.monitorBiasLight);
 
     // 7. Burnt Orange Accent LED pin-point
-    const accentLed = new THREE.PointLight(0xe66a3a, 1.6, 2.0);
+    const accentLed = new THREE.PointLight(0xe66a3a, 0.8, 2.0);
     accentLed.position.set(0.68, 0.98, -0.1);
     this.scene.add(accentLed);
   }
@@ -267,9 +325,9 @@ export class Evoke3DExperience {
   // MINECRAFT ROOM & ARCHITECTURE (Oak Planks & Bookshelves)
   // ========================================================
   private initRoom() {
-    // Floor: Minecraft Oak Planks Wood Floor
-    const oakFloorTex = createOakPlanksTexture(8, 6);
-    const floorGeo = new THREE.PlaneGeometry(14, 12);
+    // 1. Floor: Minecraft Oak Planks Wood Floor
+    const oakFloorTex = createOakPlanksTexture(10, 8);
+    const floorGeo = new THREE.PlaneGeometry(13.5, 11.5);
     const floorMat = new THREE.MeshStandardMaterial({
       map: oakFloorTex,
       roughness: 0.65,
@@ -277,60 +335,475 @@ export class Evoke3DExperience {
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, 0, 1.0);
+    floor.position.set(0, 0, 0.8);
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    // Rear Wall: Minecraft Stone Bricks Wall
+    // Wool Rug under the gaming setup area
+    const rugTex = createBurgundyWoolTexture();
+    const rugGeo = new THREE.PlaneGeometry(5.2, 4.2);
+    const rugMat = new THREE.MeshStandardMaterial({
+      map: rugTex,
+      roughness: 0.88,
+    });
+    this.rugMaterial = rugMat;
+    const rug = new THREE.Mesh(rugGeo, rugMat);
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(0.6, 0.005, 0.5);
+    rug.receiveShadow = true;
+    this.scene.add(rug);
+
+    // Stone Bricks Material for Wall Enclosure
     const stoneTex = createStoneBricksTexture(8, 4);
-    const wallGeo = new THREE.PlaneGeometry(14, 7);
     const wallMat = new THREE.MeshStandardMaterial({
       map: stoneTex,
       roughness: 0.7,
       metalness: 0.2,
     });
-    const backWall = new THREE.Mesh(wallGeo, wallMat);
-    backWall.position.set(0, 3.5, -2.2);
+
+    const oakLogMat = new THREE.MeshStandardMaterial({ color: 0x362215, roughness: 0.8 });
+
+    // 2. Rear Wall (z = -3.2)
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 4.8), wallMat);
+    backWall.position.set(0, 2.4, -3.2);
     backWall.receiveShadow = true;
     this.scene.add(backWall);
 
-    // Minecraft Enchanting Room Bookshelf Blocks along the back wall!
+    // 3. Left Wall (x = -6.2)
+    const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(11.5, 4.8), wallMat);
+    leftWall.rotation.y = Math.PI / 2;
+    leftWall.position.set(-6.2, 2.4, 0.8);
+    leftWall.receiveShadow = true;
+    this.scene.add(leftWall);
+
+    // 4. Right Wall (x = +6.2)
+    const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(11.5, 4.8), wallMat);
+    rightWall.rotation.y = -Math.PI / 2;
+    rightWall.position.set(6.2, 2.4, 0.8);
+    rightWall.receiveShadow = true;
+    this.scene.add(rightWall);
+
+    // 5. Solid Front Wall with Zero-Gap Doorway Opening (z = +5.2)
+    const leftFrontWall = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 4.8), wallMat);
+    leftFrontWall.rotation.y = Math.PI;
+    leftFrontWall.position.set(-3.65, 2.4, 5.2);
+    leftFrontWall.receiveShadow = true;
+
+    const rightFrontWall = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 4.8), wallMat);
+    rightFrontWall.rotation.y = Math.PI;
+    rightFrontWall.position.set(3.65, 2.4, 5.2);
+    rightFrontWall.receiveShadow = true;
+
+    const topFrontHeader = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.6), wallMat);
+    topFrontHeader.rotation.y = Math.PI;
+    topFrontHeader.position.set(0, 3.5, 5.2);
+    topFrontHeader.receiveShadow = true;
+
+    this.scene.add(leftFrontWall, rightFrontWall, topFrontHeader);
+
+    // 6. Corner Oak Log Pillars (All 4 Room Corners)
+    const cornerCoords = [
+      [-6.2, -3.2],
+      [6.2, -3.2],
+      [-6.2, 5.2],
+      [6.2, 5.2],
+    ];
+    cornerCoords.forEach(([cx, cz]) => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.8, 0.5), oakLogMat);
+      pillar.position.set(cx, 2.4, cz);
+      pillar.castShadow = true;
+      this.scene.add(pillar);
+    });
+
+    // 7. Ceiling Beams (Exposed Dark Oak Timber Beams)
+    for (const z of [-1.5, 0.8, 3.1]) {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(12.8, 0.25, 0.35), oakLogMat);
+      beam.position.set(0, 4.55, z);
+      this.scene.add(beam);
+    }
+
+    // 8. Minecraft Enchanting Bookshelf Wall Stacks along the Back Wall
     const shelfTex = createBookshelfTexture();
     const shelfMat = new THREE.MeshStandardMaterial({
       map: shelfTex,
       roughness: 0.6,
       metalness: 0.1,
     });
+    this.bookshelfMaterial = shelfMat;
 
-    // Left and Right Bookshelf Walls (Stack of Minecraft Bookshelves)
-    for (let x = -6; x <= 6; x += 1) {
-      if (Math.abs(x) < 3) continue; // Keep center clear behind the monitor
+    for (let x = -5.8; x <= 5.8; x += 0.9) {
+      // Leave space behind monitor (x: 0.2 to 2.2)
+      if (x >= 0.1 && x <= 2.3) continue;
       for (let y = 0; y < 3; y++) {
         const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.85), shelfMat);
-        shelf.position.set(x * 0.9, 0.425 + y * 0.85, -2.0);
+        shelf.position.set(x, 0.425 + y * 0.85, -2.8);
         shelf.castShadow = true;
         shelf.receiveShadow = true;
         this.scene.add(shelf);
       }
     }
 
-    // Minecraft Redstone Torches / Wall Sconces
+    // 9. Redstone Wall Torches
     const torchWoodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.8 });
     const torchGlowMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
 
-    for (let side = -1; side <= 1; side += 2) {
+    const torchPositions = [
+      [-3.2, 2.4, -3.1],
+      [3.8, 2.4, -3.1],
+      [-6.1, 2.4, -0.5],
+      [6.1, 2.4, -0.5],
+    ];
+
+    torchPositions.forEach(([tx, ty, tz]) => {
       const torchStick = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 0.04), torchWoodMat);
-      torchStick.position.set(side * 2.2, 2.2, -2.0);
-      torchStick.rotation.z = -side * 0.25;
-
+      torchStick.position.set(tx, ty, tz);
       const torchHead = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.06), torchGlowMat);
-      torchHead.position.set(side * 2.2 + side * 0.03, 2.32, -2.0);
-
-      const torchLight = new THREE.PointLight(0xff5533, 1.8, 4.0);
-      torchLight.position.set(side * 2.2, 2.36, -1.9);
-
+      torchHead.position.set(tx, ty + 0.12, tz);
+      const torchLight = new THREE.PointLight(0xff5533, 0.9, 4.5);
+      torchLight.position.set(tx, ty + 0.14, tz + 0.1);
       this.scene.add(torchStick, torchHead, torchLight);
+      
+      this.registerInteractive(torchStick, 'lights');
+      this.registerInteractive(torchHead, 'lights');
+    });
+
+    // Build Bed and Door
+    this.initMinecraftBedAndDoor();
+  }
+
+  private initMinecraftBedAndDoor() {
+    // ========================================================
+    // MINECRAFT DOOR (LOCATED ON THE FRONT ENCLOSURE WALL)
+    // ========================================================
+    const doorGroup = new THREE.Group();
+    doorGroup.position.set(0, 0, 5.15);
+    doorGroup.rotation.y = Math.PI;
+
+    const frameMatDoor = new THREE.MeshStandardMaterial({ color: 0x362215, roughness: 0.8 });
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x221720, roughness: 0.65 });
+    const doorAccentMat = new THREE.MeshStandardMaterial({
+      color: 0xa62b5f,
+      emissive: 0x3a102c,
+      emissiveIntensity: 0.25,
+      roughness: 0.45,
+      metalness: 0.35,
+    });
+    const doorHighlightMat = new THREE.MeshStandardMaterial({ color: 0xe66a3a, metalness: 0.65 });
+
+    // Outer Door Frame
+    for (const x of [-0.48, 0.48]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.16, 0.18), frameMatDoor);
+      post.position.set(x, 1.08, 0);
+      doorGroup.add(post);
     }
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.14, 0.18), frameMatDoor);
+    lintel.position.set(0, 2.15, 0);
+    doorGroup.add(lintel);
+
+    // Interactive Swiveling Door Slab Group (pivots on left hinge!)
+    this.doorSlabGroup = new THREE.Group();
+    this.doorSlabGroup.position.set(-0.42, 0, 0);
+
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.95, 0.08), panelMat);
+    slab.position.set(0.41, 0.98, 0);
+    this.doorSlabGroup.add(slab);
+
+    for (const y of [0.52, 1.38]) {
+      const inset = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.025), doorAccentMat);
+      inset.position.set(0.41, y, 0.045);
+      this.doorSlabGroup.add(inset);
+    }
+    const window = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.03), doorHighlightMat);
+    window.position.set(0.41, 1.74, 0.048);
+    this.doorSlabGroup.add(window);
+
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.08), doorHighlightMat);
+    handle.position.set(0.72, 0.98, 0.06);
+    this.doorSlabGroup.add(handle);
+
+    this.doorSlabGroup.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        obj.castShadow = true;
+        this.registerInteractive(obj, 'door');
+      }
+    });
+
+    doorGroup.add(this.doorSlabGroup);
+
+    // Stone Pressure Plate on floor inside room
+    const pressPlateMat = new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.6 });
+    const pressPlate = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.025, 0.38), pressPlateMat);
+    pressPlate.position.set(0, 0.012, -0.35);
+    doorGroup.add(pressPlate);
+
+    this.scene.add(doorGroup);
+
+    // ========================================================
+    // MINECRAFT BED (ON THE OTHER END OF THE WALL - LEFT SIDE)
+    // ========================================================
+    const bedGroup = new THREE.Group();
+    // Positioned along the left wall, facing inward towards room center!
+    bedGroup.position.set(-5.0, 0, 2.2);
+    bedGroup.rotation.y = Math.PI / 2;
+
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x362215, roughness: 0.8 });
+    const bedspreadMat = new THREE.MeshStandardMaterial({ color: 0xa62b5f, roughness: 0.92 });
+    const pillowMat = new THREE.MeshStandardMaterial({ color: 0xf4f0ea, roughness: 0.9 });
+
+    this.bedMattressMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.24, 1.9), bedspreadMat);
+    this.bedMattressMesh.position.set(0, 0.36, 0);
+    this.bedMattressMesh.castShadow = true;
+    this.bedMattressMesh.receiveShadow = true;
+    bedGroup.add(this.bedMattressMesh);
+
+    const bedBase = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.18, 1.96), frameMat);
+    bedBase.position.set(0, 0.18, 0);
+    bedGroup.add(bedBase);
+
+    const headboard = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.58, 0.12), frameMat);
+    headboard.position.set(0, 0.48, -0.96);
+    bedGroup.add(headboard);
+
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.14, 0.36), pillowMat);
+    pillow.position.set(0, 0.52, -0.65);
+    bedGroup.add(pillow);
+
+    for (const x of [-0.46, 0.46]) {
+      for (const z of [-0.88, 0.88]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.20, 0.14), frameMat);
+        leg.position.set(x, 0.10, z);
+        bedGroup.add(leg);
+      }
+    }
+
+    bedGroup.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true;
+        this.registerInteractive(object, 'bed');
+      }
+    });
+    this.scene.add(bedGroup);
+  }
+
+  // ========================================================
+  // MORE MINECRAFTY ITEMS (Crafting Table, Furnace, Chest, Painting, Lantern)
+  // ========================================================
+  private initMoreMinecraftItems() {
+    // 1. Crafting Table (On Left Wall next to bed)
+    const craftGroup = new THREE.Group();
+    craftGroup.position.set(-5.2, 0, -0.8);
+
+    const craftTopTex = createCraftingTableTopTexture();
+    const woodSideMat = new THREE.MeshStandardMaterial({ color: 0x8f5c32, roughness: 0.7 });
+    const topMat = new THREE.MeshStandardMaterial({ map: craftTopTex, roughness: 0.6 });
+
+    const craftMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.85, 0.85, 0.85),
+      [woodSideMat, woodSideMat, topMat, woodSideMat, woodSideMat, woodSideMat]
+    );
+    craftMesh.position.set(0, 0.425, 0);
+    craftMesh.castShadow = true;
+    craftMesh.receiveShadow = true;
+    this.registerInteractive(craftMesh, 'crafting_table');
+    craftGroup.add(craftMesh);
+    this.scene.add(craftGroup);
+
+    // 2. Furnace with Glowing Coal Fire (On Left Wall Corner)
+    const furnaceGroup = new THREE.Group();
+    furnaceGroup.position.set(-5.2, 0, -2.0);
+
+    const stoneSideMat = new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.75 });
+    const furnaceFrontTex = createFurnaceFrontTexture();
+    const frontMat = new THREE.MeshStandardMaterial({ map: furnaceFrontTex, roughness: 0.7 });
+
+    // Front faces right (+X)
+    const furnaceMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.85, 0.85, 0.85),
+      [frontMat, stoneSideMat, stoneSideMat, stoneSideMat, stoneSideMat, stoneSideMat]
+    );
+    furnaceMesh.position.set(0, 0.425, 0);
+    furnaceMesh.castShadow = true;
+    furnaceMesh.receiveShadow = true;
+    furnaceGroup.add(furnaceMesh);
+
+    // Warm Coal Fire Glow Light
+    const furnaceLight = new THREE.PointLight(0xff5500, 1.8, 4.0);
+    furnaceLight.position.set(0.45, 0.425, 0);
+    furnaceGroup.add(furnaceLight);
+    this.scene.add(furnaceGroup);
+
+    // 3. Storage Chest / Ender Chest (On Right Wall)
+    const chestGroup = new THREE.Group();
+    chestGroup.position.set(5.2, 0, 2.2);
+
+    const chestTex = createChestFrontTexture();
+    const chestWoodMat = new THREE.MeshStandardMaterial({ map: chestTex, roughness: 0.6 });
+    const ironLockMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
+
+    const chestBase = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.85), chestWoodMat);
+    chestBase.position.set(0, 0.225, 0);
+    chestBase.castShadow = true;
+    this.registerInteractive(chestBase, 'chest');
+    chestGroup.add(chestBase);
+
+    // Lid group with pivot at rear top edge
+    this.chestLidGroup = new THREE.Group();
+    this.chestLidGroup.position.set(0, 0.45, -0.425);
+
+    const lidMesh = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.25, 0.85), chestWoodMat);
+    lidMesh.position.set(0, 0.125, 0.425);
+    lidMesh.castShadow = true;
+    this.registerInteractive(lidMesh, 'chest');
+    this.chestLidGroup.add(lidMesh);
+
+    const lockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.08), ironLockMat);
+    lockMesh.position.set(0, 0.08, 0.865);
+    this.chestLidGroup.add(lockMesh);
+
+    chestGroup.add(this.chestLidGroup);
+    this.scene.add(chestGroup);
+
+    // 4. Minecraft Wall Painting (Right Wall)
+    const paintingTex = createPaintingTexture();
+    this.paintingMaterial = new THREE.MeshBasicMaterial({ map: paintingTex });
+    const paintingMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), this.paintingMaterial);
+    paintingMesh.rotation.y = -Math.PI / 2;
+    paintingMesh.position.set(6.14, 2.4, -0.5);
+    this.scene.add(paintingMesh);
+
+    // 5. Minecraft Jukebox (Right Wall next to chest)
+    const jukeboxMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.65 });
+    const jukeDiscMat = new THREE.MeshBasicMaterial({ color: 0xa62b5f });
+    const jukebox = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.85), jukeboxMat);
+    jukebox.position.set(5.2, 0.425, 0.9);
+    const discSlot = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 0.08), jukeDiscMat);
+    discSlot.position.set(5.2, 0.86, 0.9);
+    this.scene.add(jukebox, discSlot);
+
+    // 6. Hanging Redstone/Iron Lantern from Ceiling Beam
+    const lanternGroup = new THREE.Group();
+    lanternGroup.position.set(0, 3.4, 0.5);
+
+    const chainMat = new THREE.MeshStandardMaterial({ color: 0x4a4a50, metalness: 0.8 });
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 8), chainMat);
+    chain.position.set(0, 0.2, 0);
+
+    const ironFrameMat = new THREE.MeshStandardMaterial({ color: 0x222226, metalness: 0.8, roughness: 0.3 });
+    const glowCoreMat = new THREE.MeshBasicMaterial({ color: 0xffaa33 });
+
+    const lanternFrame = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.22), ironFrameMat);
+    const lanternCore = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.20, 0.14), glowCoreMat);
+    lanternGroup.add(chain, lanternFrame, lanternCore);
+
+    const lanternLight = new THREE.PointLight(0xffaa33, 2.6, 7.0);
+    lanternLight.position.set(0, 0, 0);
+    lanternGroup.add(lanternLight);
+
+    this.scene.add(lanternGroup);
+
+    // 7. EVOKE ESPORTS CHAMPIONS POSTER (Mounted on Left Wall above bed)
+    const posterTex = createEsportsPosterTexture();
+    const posterMat = new THREE.MeshBasicMaterial({ map: posterTex });
+    this.posterMaterial = posterMat;
+    const posterMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.4), posterMat);
+    posterMesh.rotation.y = Math.PI / 2;
+    posterMesh.position.set(-6.14, 2.6, 2.2);
+    this.registerInteractive(posterMesh, 'poster');
+    this.scene.add(posterMesh);
+  }
+
+  // ========================================================
+  // SMALL FREE-ROAMING MINECRAFT TAMED PUPPY
+  // ========================================================
+  private initPuppy() {
+    this.puppyGroup = new THREE.Group();
+    this.puppyGroup.position.copy(this.puppyPos);
+
+    const furMat = new THREE.MeshStandardMaterial({ color: 0xede8df, roughness: 0.8 }); // Cream white fur
+    const snoutMat = new THREE.MeshStandardMaterial({ color: 0xd9d2c5, roughness: 0.75 });
+    const noseMat = new THREE.MeshBasicMaterial({ color: 0x1a1715 });
+    const collarMat = new THREE.MeshStandardMaterial({ color: 0xa62b5f, roughness: 0.4 }); // Red collar
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x151419 });
+    const eyeGlintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    this.themeMaterials.push({ material: collarMat, role: 'accent' });
+
+    // 1. Puppy Main Body Block
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.26, 0.42), furMat);
+    body.position.set(0, 0.26, 0);
+    body.castShadow = true;
+    this.puppyGroup.add(body);
+
+    // 2. Red Collar Ring around neck
+    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.05, 0.10), collarMat);
+    collar.position.set(0, 0.28, 0.16); // +0.16 FOR FORWARD HEAD
+    this.puppyGroup.add(collar);
+
+    // 3. Puppy Head Group
+    this.puppyHeadGroup = new THREE.Group();
+    this.puppyHeadGroup.position.set(0, 0.32, 0.22); // +0.22 FOR FORWARD HEAD
+
+    const headBox = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.22, 0.24), furMat);
+    headBox.castShadow = true;
+    this.puppyHeadGroup.add(headBox);
+
+    // Snout & Nose
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.10, 0.12), snoutMat);
+    snout.position.set(0, -0.03, 0.15); // FORWARD
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.03), noseMat);
+    nose.position.set(0, 0.01, 0.215); // FORWARD NOSE TIP
+    this.puppyHeadGroup.add(snout, nose);
+
+    // Floppy/Perky Ears & Eyes
+    for (const side of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.10, 0.05), furMat);
+      ear.position.set(side * 0.10, 0.13, 0.02);
+      ear.rotation.z = -side * 0.15;
+      this.puppyHeadGroup.add(ear);
+
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.02), eyeMat);
+      eye.position.set(side * 0.08, 0.02, 0.122);
+      const glint = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.022), eyeGlintMat);
+      glint.position.set(side * 0.075, 0.028, 0.123);
+      this.puppyHeadGroup.add(eye, glint);
+    }
+
+    this.puppyGroup.add(this.puppyHeadGroup);
+
+    // 4. 4 Voxel Legs
+    this.puppyLegs = [];
+    const legCoords = [
+      [-0.10, 0.11, 0.14],  // Front Left (+Z Forward)
+      [0.10, 0.11, 0.14],   // Front Right (+Z Forward)
+      [-0.10, 0.11, -0.14], // Back Left (-Z Rear)
+      [0.10, 0.11, -0.14],  // Back Right (-Z Rear)
+    ];
+
+    legCoords.forEach(([lx, ly, lz]) => {
+      const legGroup = new THREE.Group();
+      legGroup.position.set(lx, ly, lz);
+      const legMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.08), furMat);
+      legMesh.position.set(0, -0.11, 0);
+      legMesh.castShadow = true;
+      legGroup.add(legMesh);
+      this.puppyLegs.push(legGroup as unknown as THREE.Mesh);
+      this.puppyGroup.add(legGroup);
+    });
+
+    // 5. Fluffy Voxel Puppy Tail (At Rear -Z)
+    this.puppyTail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.20), furMat);
+    this.puppyTail.position.set(0, 0.28, -0.21); // REAR TAIL
+    this.puppyTail.rotation.x = -0.35;
+    this.puppyGroup.add(this.puppyTail);
+
+    // Register all puppy parts for interactive clicks / petting
+    this.puppyGroup.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        this.registerInteractive(obj, 'puppy');
+      }
+    });
+
+    this.scene.add(this.puppyGroup);
   }
 
   // ========================================================
@@ -378,6 +851,7 @@ export class Evoke3DExperience {
       roughness: 0.85,
       metalness: 0.1,
     });
+    this.deskPadMaterial = matMat;
     const deskMat = new THREE.Mesh(matGeo, matMat);
     deskMat.position.set(0, 0.885, 0.08);
     deskMat.receiveShadow = true;
@@ -390,6 +864,7 @@ export class Evoke3DExperience {
       roughness: 0.3,
       metalness: 0.8,
     });
+    this.themeMaterials.push({ material: borderMat, role: 'highlight' });
     const matBorder = new THREE.Mesh(borderGeo, borderMat);
     matBorder.position.set(0, 0.882, 0.08);
     deskGroup.add(matBorder);
@@ -750,6 +1225,7 @@ export class Evoke3DExperience {
       roughness: 0.35,
       metalness: 0.6,
     });
+    this.themeMaterials.push({ material: bodyMat, role: 'surface' });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.castShadow = true;
     this.controllerGroup.add(body);
@@ -761,6 +1237,7 @@ export class Evoke3DExperience {
       roughness: 0.6,
       metalness: 0.4,
     });
+    this.themeMaterials.push({ material: gripMat, role: 'tertiary' });
 
     const leftGrip = new THREE.Mesh(gripGeo, gripMat);
     leftGrip.position.set(-0.09, -0.015, 0.045);
@@ -780,6 +1257,7 @@ export class Evoke3DExperience {
     const stickStemGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.018, 12);
     const stickCapGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.006, 16);
     const stemMat = new THREE.MeshStandardMaterial({ color: 0xa62b5f, metalness: 0.8 });
+    this.themeMaterials.push({ material: stemMat, role: 'accent' });
     const capMat = new THREE.MeshStandardMaterial({ color: 0x171519, roughness: 0.8 });
 
     // Left Stick
@@ -803,6 +1281,7 @@ export class Evoke3DExperience {
       emissive: 0xe66a3a,
       emissiveIntensity: 0.8,
     });
+    this.themeMaterials.push({ material: guideMat, role: 'highlight', emissive: true });
     const guideBtn = new THREE.Mesh(guideGeo, guideMat);
     guideBtn.position.set(0, 0.024, -0.01);
     this.controllerGroup.add(guideBtn);
@@ -848,6 +1327,7 @@ export class Evoke3DExperience {
       color: 0x7a5127,
       roughness: 0.7,
     });
+    this.themeMaterials.push({ material: pistonWoodMat, role: 'tertiary' });
 
     // Piston Cylinder Core Base
     const baseHub = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.10, 0.18), pistonWoodMat);
@@ -856,7 +1336,13 @@ export class Evoke3DExperience {
 
     // 5 Voxel Iron Spokes with Caster Wheels
     const spokeMat = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.5 });
-    const redstoneWheelMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+    this.themeMaterials.push({ material: spokeMat, role: 'surface' });
+    const redstoneWheelMat = new THREE.MeshStandardMaterial({
+      color: 0xff3300,
+      emissive: 0xff3300,
+      emissiveIntensity: 0.25,
+    });
+    this.themeMaterials.push({ material: redstoneWheelMat, role: 'highlight', emissive: true });
 
     for (let i = 0; i < 5; i++) {
       const angle = (i * Math.PI * 2) / 5;
@@ -891,14 +1377,17 @@ export class Evoke3DExperience {
       roughness: 0.85,
       metalness: 0.05,
     });
+    this.chairUpholsteryMaterial = burgundyWoolMat;
     const blackWoolMat = new THREE.MeshStandardMaterial({
       color: 0x18181b,
       roughness: 0.85,
     });
+    this.themeMaterials.push({ material: blackWoolMat, role: 'surface' });
     const darkOakMat = new THREE.MeshStandardMaterial({
       color: 0x2e1b0e,
       roughness: 0.75,
     });
+    this.themeMaterials.push({ material: darkOakMat, role: 'tertiary' });
 
     // 1. Minecraft Burgundy Wool Cushion Seat Base (Blocky Voxel)
     const seatCore = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.10, 0.48), burgundyWoolMat);
@@ -1175,6 +1664,7 @@ export class Evoke3DExperience {
       color: 0x332e3a,
       roughness: 0.7,
     });
+    this.themeMaterials.push({ material: keyMat, role: 'surface' });
 
     for (let r = 0; r < 5; r++) {
       for (let c = 0; c < 14; c++) {
@@ -1195,6 +1685,7 @@ export class Evoke3DExperience {
       roughness: 0.4,
       metalness: 0.5,
     });
+    this.themeMaterials.push({ material: mouseMat, role: 'surface' });
     this.mouseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.028, 0.12), mouseMat);
     this.mouseMesh.position.set(0, 0.014, 0);
     this.mouseMesh.castShadow = true;
@@ -1209,7 +1700,12 @@ export class Evoke3DExperience {
     this.mouseGroup.add(lClick, rClick);
 
     // Redstone Voxel Scroll Wheel
-    const wheelMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0xff3300,
+      emissive: 0xff3300,
+      emissiveIntensity: 0.25,
+    });
+    this.themeMaterials.push({ material: wheelMat, role: 'highlight', emissive: true });
     const wheel = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.014, 0.022), wheelMat);
     wheel.position.set(0, 0.03, -0.025);
     this.mouseGroup.add(wheel);
@@ -1294,7 +1790,6 @@ export class Evoke3DExperience {
         if (this.character) {
           this.character.triggerInspect();
         }
-        soundscape.playClick(1350);
         this.callbacks.onCharacterInspect?.();
         break;
 
@@ -1319,6 +1814,35 @@ export class Evoke3DExperience {
 
       case 'controller':
         soundscape.playClick(750);
+        break;
+
+      case 'door':
+        this.isDoorOpen = !this.isDoorOpen;
+        soundscape.playClick(820);
+        break;
+
+      case 'bed':
+        this.bedBounceTime = 0.01;
+        soundscape.playClick(650);
+        break;
+
+      case 'chest':
+        this.isChestOpen = !this.isChestOpen;
+        soundscape.playClick(900);
+        break;
+
+      case 'crafting_table':
+        soundscape.playClick(1100);
+        break;
+
+      case 'puppy':
+        this.puppyState = 'petted';
+        this.puppyPetTimer = 1.8;
+        soundscape.playClick(1400);
+        break;
+
+      case 'poster':
+        soundscape.playClick(1300);
         break;
     }
 
@@ -1525,8 +2049,15 @@ export class Evoke3DExperience {
           soundscape.playClick(1050);
           return;
         }
+
+        // 4. Any other interactive object (character_hero/statue, monitor, pc, headset, etc.)
+        if (objectId) {
+          this.clickedObjectId = objectId;
+          return; // Do NOT set isPointerDown to true so camera doesn't start orbiting!
+        }
       }
 
+      this.clickedObjectId = null;
       this.isPointerDown = true;
     };
 
@@ -1543,6 +2074,14 @@ export class Evoke3DExperience {
       this.mouseParallax.targetX = nx * 0.1;
       this.mouseParallax.targetY = ny * 0.06;
 
+      // If clicked an interactive object and mouse moved significantly, cancel click
+      if (this.clickedObjectId) {
+        const dist = Math.hypot(clientX - this.pointerStart.x, clientY - this.pointerStart.y);
+        if (dist > 15) {
+          this.clickedObjectId = null;
+        }
+      }
+
       // 1. Controller Dragging in 3D
       if (this.isDraggingController) {
         this.raycaster.setFromCamera(this.pointer, this.camera);
@@ -1550,8 +2089,21 @@ export class Evoke3DExperience {
         if (this.raycaster.ray.intersectPlane(this.deskDragPlane, intersectPoint)) {
           const localPoint = this.battlestationGroup.worldToLocal(intersectPoint.clone());
           // Clamp to desk bounds
-          const targetX = THREE.MathUtils.clamp(localPoint.x, -0.65, 0.65);
-          const targetZ = THREE.MathUtils.clamp(localPoint.z, -0.15, 0.42);
+          let targetX = THREE.MathUtils.clamp(localPoint.x, -0.65, 0.65);
+          let targetZ = THREE.MathUtils.clamp(localPoint.z, -0.15, 0.42);
+
+          // Avoid Keyboard (center approx x=0, z=0.08)
+          if (targetX > -0.22 && targetX < 0.22 && targetZ > -0.05 && targetZ < 0.22) {
+             if (Math.abs(targetX) > Math.abs(targetZ - 0.08)) {
+                 targetX = targetX > 0 ? 0.22 : -0.22;
+             } else {
+                 targetZ = targetZ > 0.08 ? 0.22 : -0.05;
+             }
+          }
+          // Avoid PS5 and Stand
+          if (targetX < -0.55 && targetZ < 0.15) targetX = -0.55;
+          if (targetX > 0.45 && targetZ < 0.15) targetX = 0.45;
+
           const targetY = 0.89 + 0.16; // Lifted above desk
 
           this.controllerVelocity.set(
@@ -1571,11 +2123,11 @@ export class Evoke3DExperience {
         const intersectPoint = new THREE.Vector3();
         if (this.raycaster.ray.intersectPlane(this.deskDragPlane, intersectPoint)) {
           const localPoint = this.battlestationGroup.worldToLocal(intersectPoint.clone());
-          const clampedX = THREE.MathUtils.clamp(localPoint.x, 0.12, 0.48);
+          const clampedX = THREE.MathUtils.clamp(localPoint.x, 0.22, 0.48);
           const clampedZ = THREE.MathUtils.clamp(localPoint.z, -0.06, 0.28);
           this.mouseGroup.position.set(clampedX, 0.885, clampedZ);
 
-          const normX = (clampedX - 0.12) / (0.48 - 0.12);
+          const normX = (clampedX - 0.22) / (0.48 - 0.22);
           const normY = (clampedZ - (-0.06)) / (0.28 - (-0.06));
           this.monitorCursorX = THREE.MathUtils.clamp(normX * 1024, 25, 995);
           this.monitorCursorY = THREE.MathUtils.clamp((1.0 - normY) * 512, 25, 485);
@@ -1597,7 +2149,7 @@ export class Evoke3DExperience {
           const rawTargetX = localFloor.x + this.chairDragOffset.x;
           const rawTargetZ = localFloor.z + this.chairDragOffset.z;
           const targetX = THREE.MathUtils.clamp(rawTargetX, -1.3, 1.3);
-          const targetZ = THREE.MathUtils.clamp(rawTargetZ, 0.40, 1.6);
+          const targetZ = THREE.MathUtils.clamp(rawTargetZ, 0.95, 1.8);
 
           this.chairVelocity.set(
             (targetX - this.chairPos.x) * 0.4,
@@ -1654,7 +2206,12 @@ export class Evoke3DExperience {
         this.callbacks.onMouseDragEnd?.();
         this.callbacks.onSelectObject('mouse');
         soundscape.playClick(980);
-      } else if (dist < 6) {
+      } else if (this.clickedObjectId) {
+        if (dist < 15) {
+          this.triggerObjectInteraction(this.clickedObjectId);
+        }
+        this.clickedObjectId = null;
+      } else if (dist < 8) {
         // Distinct click / tap on object
         this.updatePointerCoords(clientX, clientY);
         this.raycaster.setFromCamera(this.pointer, this.camera);
@@ -1673,6 +2230,16 @@ export class Evoke3DExperience {
       }
 
       this.isPointerDown = false;
+      this.clickedObjectId = null;
+    };
+
+    // Reset interaction state if window loses focus
+    const onWindowBlur = () => {
+      this.isPointerDown = false;
+      this.isDraggingChair = false;
+      this.isDraggingController = false;
+      this.isDraggingMouse = false;
+      this.clickedObjectId = null;
     };
 
     // Mouse Wheel Zoom
@@ -1703,6 +2270,7 @@ export class Evoke3DExperience {
     el.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mousemove', onPointerMove);
     window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('blur', onWindowBlur);
     el.addEventListener('wheel', onWheel, { passive: true });
 
     el.addEventListener('touchstart', onPointerDown, { passive: true });
@@ -1799,14 +2367,20 @@ export class Evoke3DExperience {
 
   private animate = () => {
     this.animFrameId = requestAnimationFrame(this.animate);
-    const time = this.clock.getElapsedTime();
+    const delta = this.clock.getDelta();
+    const time = this.clock.elapsedTime;
 
     // 1. Camera
     this.updateCameraPosition();
 
     // 1b. Update 3D Character on Left (breathing, ball spin, head tracking)
     if (this.character) {
-      this.character.update(time, this.pointer.x, this.pointer.y);
+      this.character.update(
+        time,
+        delta,
+        THREE.MathUtils.clamp(this.pointer.x, -1, 1),
+        THREE.MathUtils.clamp(this.pointer.y, -1, 1)
+      );
     }
 
     // 2. Controller Dynamics (Drag & Settle Physics)
@@ -1885,8 +2459,8 @@ export class Evoke3DExperience {
       const keys = this.keyboardKeyGroup.children as THREE.Mesh[];
       keys.forEach((key) => {
         const wave = Math.sin(time * 6 - key.position.x * 12) * 0.5 + 0.5;
-        (key.material as THREE.MeshStandardMaterial).color.setHex(
-          wave > 0.6 ? 0xa62b5f : 0x221a24
+        (key.material as THREE.MeshStandardMaterial).color.set(
+          wave > 0.6 ? this.themePalette.accent : this.themePalette.surface
         );
       });
       if (this.keyboardWaveTime > 0) {
@@ -1905,14 +2479,192 @@ export class Evoke3DExperience {
       this.dustParticles.geometry.attributes.position.needsUpdate = true;
     }
 
+    // 9. Door Opening Swivel Animation
+    if (this.doorSlabGroup) {
+      const targetDoorRot = this.isDoorOpen ? -Math.PI / 2.2 : 0;
+      this.doorSlabGroup.rotation.y += (targetDoorRot - this.doorSlabGroup.rotation.y) * 0.12;
+    }
+
+    // 10. Storage Chest Lid Animation
+    if (this.chestLidGroup) {
+      const targetLidRot = this.isChestOpen ? -Math.PI / 2.5 : 0;
+      this.chestLidGroup.rotation.x += (targetLidRot - this.chestLidGroup.rotation.x) * 0.12;
+    }
+
+    // 11. Bed Mattress Bounce Animation
+    if (this.bedBounceTime > 0 && this.bedMattressMesh) {
+      this.bedBounceTime += delta;
+      this.bedMattressMesh.position.y = 0.36 + Math.sin(this.bedBounceTime * 18) * 0.05 * Math.exp(-this.bedBounceTime * 3);
+      if (this.bedBounceTime > 1.5) {
+        this.bedBounceTime = 0;
+        this.bedMattressMesh.position.y = 0.36;
+      }
+    }
+
+    // 12. Free-Roaming Minecraft Puppy Autonomous AI
+    this.updatePuppy(time, delta);
+
     // Render
     this.renderer.render(this.scene, this.camera);
   };
+
+  private updatePuppy(time: number, delta: number) {
+    if (!this.puppyGroup) return;
+
+    if (this.puppyState === 'petted') {
+      this.puppyPetTimer -= delta;
+      const hop = Math.abs(Math.sin(time * 16)) * 0.14;
+      this.puppyGroup.position.y = hop;
+
+      if (this.puppyHeadGroup) {
+        this.puppyHeadGroup.rotation.y = Math.sin(time * 8) * 0.25;
+        this.puppyHeadGroup.rotation.x = -0.15;
+      }
+      if (this.puppyTail) {
+        this.puppyTail.rotation.y = Math.sin(time * 30) * 0.55;
+      }
+
+      if (this.puppyPetTimer <= 0) {
+        this.puppyState = 'idle';
+        this.puppyGroup.position.y = 0;
+        if (this.puppyHeadGroup) this.puppyHeadGroup.rotation.set(0, 0, 0);
+      }
+      return;
+    }
+
+    if (this.puppyState === 'walking') {
+      const dx = this.puppyTargetPos.x - this.puppyPos.x;
+      const dz = this.puppyTargetPos.z - this.puppyPos.z;
+      const dist = Math.hypot(dx, dz);
+
+      if (dist < 0.22) {
+        // Arrived at target point, sit down or rest
+        this.puppyState = Math.random() > 0.4 ? 'sitting' : 'idle';
+        this.puppyTimer = 2.0 + Math.random() * 3.5;
+        this.puppyLegs.forEach((leg) => (leg.rotation.x = 0));
+        return;
+      }
+
+      // Turn towards target heading
+      const targetAngle = Math.atan2(dx, dz);
+      let angleDiff = targetAngle - this.puppyHeading;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      this.puppyHeading += angleDiff * 0.08;
+      this.puppyGroup.rotation.y = this.puppyHeading;
+
+      // Move forward smoothly
+      const speed = 0.72 * delta;
+      this.puppyPos.x += Math.sin(this.puppyHeading) * speed;
+      this.puppyPos.z += Math.cos(this.puppyHeading) * speed;
+      this.puppyGroup.position.copy(this.puppyPos);
+
+      // Leg walk cycle
+      const swing = Math.sin(time * 12) * 0.45;
+      if (this.puppyLegs.length === 4) {
+        this.puppyLegs[0].rotation.x = swing;
+        this.puppyLegs[1].rotation.x = -swing;
+        this.puppyLegs[2].rotation.x = -swing;
+        this.puppyLegs[3].rotation.x = swing;
+      }
+
+      // Tail wagging
+      if (this.puppyTail) {
+        this.puppyTail.rotation.y = Math.sin(time * 14) * 0.35;
+      }
+      if (this.puppyHeadGroup) {
+        this.puppyHeadGroup.rotation.set(0, 0, 0);
+      }
+
+    } else if (this.puppyState === 'sitting') {
+      this.puppyGroup.rotation.x = THREE.MathUtils.lerp(this.puppyGroup.rotation.x, -0.28, 0.1);
+      if (this.puppyHeadGroup) {
+        this.puppyHeadGroup.rotation.y = Math.sin(time * 2.2) * 0.12;
+        this.puppyHeadGroup.rotation.x = -0.12;
+      }
+      if (this.puppyTail) {
+        this.puppyTail.rotation.y = Math.sin(time * 8) * 0.25;
+      }
+
+      this.puppyTimer -= delta;
+      if (this.puppyTimer <= 0) {
+        this.puppyGroup.rotation.x = 0;
+        this.puppyState = 'walking';
+        this.pickPuppyTarget();
+      }
+
+    } else {
+      // Idle state
+      this.puppyGroup.rotation.x = THREE.MathUtils.lerp(this.puppyGroup.rotation.x, 0, 0.1);
+      if (this.puppyHeadGroup) {
+        this.puppyHeadGroup.rotation.y = Math.sin(time * 2.5) * 0.18;
+        this.puppyHeadGroup.rotation.z = Math.sin(time * 1.5) * 0.08;
+      }
+      if (this.puppyTail) {
+        this.puppyTail.rotation.y = Math.sin(time * 5) * 0.22;
+      }
+
+      this.puppyTimer -= delta;
+      if (this.puppyTimer <= 0) {
+        this.puppyState = 'walking';
+        this.pickPuppyTarget();
+      }
+    }
+  }
+
+  private pickPuppyTarget() {
+    // Pick random target within enclosed room floor boundaries
+    const rx = (Math.random() - 0.5) * 7.5;
+    const rz = (Math.random() - 0.5) * 5.0 + 0.6;
+    this.puppyTargetPos.set(rx, 0, rz);
+  }
 
   public setCharacter(game: EsportsGameId) {
     if (this.character) {
       this.character.setCharacter(game);
     }
+  }
+
+  public setEnvironmentPalette(accent: string, highlight: string, tertiary: string, surface: string) {
+    this.themePalette = { accent, highlight, tertiary, surface };
+    this.themeMaterials.forEach(({ material, role, emissive }) => {
+      const color = this.themePalette[role];
+      material.color.set(color);
+      if (emissive) material.emissive.set(color);
+    });
+
+    this.bookshelfMaterial.map?.dispose();
+    this.bookshelfMaterial.map = createBookshelfTexture(accent, highlight, tertiary);
+    this.bookshelfMaterial.needsUpdate = true;
+
+    this.chairUpholsteryMaterial.map?.dispose();
+    this.chairUpholsteryMaterial.map = createBurgundyWoolTexture(accent, highlight, tertiary);
+    this.chairUpholsteryMaterial.needsUpdate = true;
+
+    this.deskPadMaterial.map?.dispose();
+    this.deskPadMaterial.map = createBurgundyWoolTexture(accent, highlight, tertiary);
+    this.deskPadMaterial.needsUpdate = true;
+
+    if (this.rugMaterial) {
+      this.rugMaterial.map?.dispose();
+      this.rugMaterial.map = createBurgundyWoolTexture(accent, highlight, tertiary);
+      this.rugMaterial.needsUpdate = true;
+    }
+
+    if (this.posterMaterial) {
+      this.posterMaterial.map?.dispose();
+      this.posterMaterial.map = createEsportsPosterTexture(accent, highlight, tertiary);
+      this.posterMaterial.needsUpdate = true;
+    }
+
+    if (this.paintingMaterial) {
+      this.paintingMaterial.map?.dispose();
+      this.paintingMaterial.map = createPaintingTexture(accent, highlight, tertiary);
+      this.paintingMaterial.needsUpdate = true;
+    }
+
+    this.character?.setPedestalPalette(accent, highlight, surface);
+    this.renderer.render(this.scene, this.camera);
   }
 
   public getActiveCharacter(): EsportsGameId {
@@ -1922,6 +2674,13 @@ export class Evoke3DExperience {
   public setPlayerGamerTag(tag: string) {
     this.activePlayerTag = tag;
     this.drawMonitorScreen(0);
+  }
+
+  public toggleRoomLights() {
+    this.ambientLight.visible = !this.ambientLight.visible;
+    this.mauveSpotLight.visible = !this.mauveSpotLight.visible;
+    this.plumFillLight.visible = !this.plumFillLight.visible;
+    this.rimLight.visible = !this.rimLight.visible;
   }
 
   public destroy() {

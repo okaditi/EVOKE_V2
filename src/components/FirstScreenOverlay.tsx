@@ -38,10 +38,10 @@ export const FirstScreenOverlay: React.FC<FirstScreenOverlayProps> = ({
       {/* ========================================================= */}
       <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden">
         {/* Left Side: Burgundy / Deep Mauve Aura for Valorant Agent */}
-        <div className="absolute top-[45%] left-[22%] -translate-x-1/2 -translate-y-1/2 w-[45vw] h-[65vh] max-w-[650px] max-h-[650px] bg-gradient-to-tr from-[#3A102C]/35 via-[#721C47]/25 to-[#A62B5F]/20 rounded-full blur-[110px]" />
+        <div className="theme-scene-aura-left absolute top-[45%] left-[22%] -translate-x-1/2 -translate-y-1/2 w-[45vw] h-[65vh] max-w-[650px] max-h-[650px] rounded-full blur-[110px]" />
 
         {/* Right Side: Burgundy / Burnt Orange Glow for Battlestation Setup */}
-        <div className="absolute top-[48%] right-[18%] translate-x-1/2 -translate-y-1/2 w-[50vw] h-[65vh] max-w-[750px] max-h-[700px] bg-gradient-to-tl from-[#3A102C]/35 via-[#A62B5F]/20 to-[#E66A3A]/15 rounded-full blur-[120px]" />
+        <div className="theme-scene-aura-right absolute top-[48%] right-[18%] translate-x-1/2 -translate-y-1/2 w-[50vw] h-[65vh] max-w-[750px] max-h-[700px] rounded-full blur-[120px]" />
       </div>
 
       {/* Top Center: If inside Monitor zoom mode, show Return pill */}
@@ -58,14 +58,16 @@ export const FirstScreenOverlay: React.FC<FirstScreenOverlayProps> = ({
       )}
 
       {/* ========================================================= */}
-      {/* MINIMAL SUBTLE SCROLL CUE (No distracting dialog boxes)  */}
+      {/* BOLD THEMED SCROLL CUE  */}
       {/* ========================================================= */}
-      <div className="absolute bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 pointer-events-none opacity-75">
-        <div className="flex items-center gap-2 text-[#A62B5F]">
-          <span className="font-display text-[10px] tracking-[0.3em] uppercase text-[#F4F0EA]/70">
+      <div className="absolute bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none z-50">
+        <div className="flex flex-col items-center gap-3">
+          <span className="theme-accent-text theme-accent-glow-text font-display font-black text-xs sm:text-sm tracking-[0.4em] uppercase drop-shadow-md">
             SCROLL TO EXPLORE
           </span>
-          <ArrowDown className="w-3 h-3 text-[#E66A3A] animate-bounce" />
+          <div className="theme-accent-border theme-accent-glow flex h-10 w-6 items-center justify-center rounded-full border-2 bg-[#17141C]/80 backdrop-blur-sm">
+            <ArrowDown className="theme-highlight-text h-4 w-4 animate-bounce" />
+          </div>
         </div>
       </div>
     </div>

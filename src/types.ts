@@ -48,7 +48,14 @@ export type InteractiveObjectId =
   | 'pc'
   | 'keyboard'
   | 'mouse'
-  | 'character_hero';
+  | 'character_hero'
+  | 'puppy'
+  | 'bed'
+  | 'door'
+  | 'crafting_table'
+  | 'chest'
+  | 'poster'
+  | 'lights';
 
 export interface DiscoveryItem {
   id: InteractiveObjectId;
@@ -121,6 +128,55 @@ export const DISCOVERY_ITEMS: Record<InteractiveObjectId, DiscoveryItem> = {
     discoveryText: "WHAT'S NEXT?",
     subtext: 'Tactile precision crafted for master champions.',
     iconName: 'Keyboard',
+  },
+  puppy: {
+    id: 'puppy',
+    label: 'MINECRAFT TAMED PUPPY',
+    discoveryText: 'FREE ROAMING COMPANION',
+    subtext: 'Your loyal voxel puppy exploring the room. Click to make him happy-bark & sit!',
+    iconName: 'Heart',
+  },
+  bed: {
+    id: 'bed',
+    label: 'MINECRAFT RESPAWN BED',
+    discoveryText: 'REST & RECOVERY',
+    subtext: 'Voxel red wool mattress with dark oak wood frame. Sets respawn anchor.',
+    iconName: 'Bed',
+  },
+  door: {
+    id: 'door',
+    label: 'MINECRAFT OAK DOOR',
+    discoveryText: 'ENCLOSED GAMING ROOM ENTRY',
+    subtext: 'Classic Minecraft spruce/oak door with glass panel and iron handle.',
+    iconName: 'DoorClosed',
+  },
+  crafting_table: {
+    id: 'crafting_table',
+    label: 'MINECRAFT CRAFTING TABLE',
+    discoveryText: 'CREATIVE WORK BENCH',
+    subtext: '3x3 Voxel crafting grid block for building gear and tools.',
+    iconName: 'Box',
+  },
+  chest: {
+    id: 'chest',
+    label: 'MINECRAFT STORAGE CHEST',
+    discoveryText: 'LOOT & REWARDS',
+    subtext: 'Voxel wooden chest with iron lock clasp.',
+    iconName: 'Package',
+  },
+  poster: {
+    id: 'poster',
+    label: 'EVOKE ESPORTS CHAMPIONS POSTER',
+    discoveryText: 'DOMINATE THE ARENA',
+    subtext: 'Official Evoke Esports Valorant Radiant Champions wall poster.',
+    iconName: 'Trophy',
+  },
+  lights: {
+    id: 'lights',
+    label: 'ROOM LIGHTS',
+    discoveryText: 'AMBIENCE',
+    subtext: 'Click to toggle room lighting.',
+    iconName: 'Lightbulb',
   },
 };
 
