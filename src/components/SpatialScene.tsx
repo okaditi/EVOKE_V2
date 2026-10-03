@@ -79,17 +79,8 @@ export const SpatialScene: React.FC = () => {
 
   // Smooth scroll progression interpolation
   useEffect(() => {
-    const handleScroll = () => {
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (maxScroll > 0) {
-        targetProgressRef.current = Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-
     const tick = () => {
+      animFrameRef.current = null;
       const target = targetProgressRef.current;
       const diff = target - currentProgressRef.current;
       if (Math.abs(diff) > 0.0002) {
@@ -104,14 +95,28 @@ export const SpatialScene: React.FC = () => {
           experienceRef.current.setScrollProgress(current);
         }
       }
-      animFrameRef.current = requestAnimationFrame(tick);
+      if (Math.abs(targetProgressRef.current - currentProgressRef.current) > 0.0002) {
+        animFrameRef.current = requestAnimationFrame(tick);
+      }
     };
 
-    animFrameRef.current = requestAnimationFrame(tick);
+    const handleScroll = () => {
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxScroll > 0) {
+        targetProgressRef.current = Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
+      }
+      if (animFrameRef.current === null) {
+        animFrameRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
     };
   }, []);
 

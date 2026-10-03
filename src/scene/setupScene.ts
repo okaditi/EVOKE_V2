@@ -48,6 +48,30 @@ export class Evoke3DExperience {
   public renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock;
   private animFrameId: number | null = null;
+  private removeEventListeners: (() => void) | null = null;
+  private devPerfObserver: PerformanceObserver | null = null;
+  private devPerfEnabled = false;
+  private devPerfWindowStart = 0;
+  private devPerfFrameCount = 0;
+  private devPerfFrameTotalMs = 0;
+  private devPerfFrameMaxMs = 0;
+  private devPerfUpdateTotalMs = 0;
+  private devPerfUpdateMaxMs = 0;
+  private devPerfRenderTotalMs = 0;
+  private devPerfRenderMaxMs = 0;
+  private devPerfHoverTotalMs = 0;
+  private devPerfHoverMaxMs = 0;
+  private devPerfHoverCount = 0;
+  private devPerfPointerMoveCount = 0;
+  private devPerfRawPointerEventCount = 0;
+  private devPerfPointerMoveTotalMs = 0;
+  private devPerfPointerMoveMaxMs = 0;
+  private devSceneInitMs = 0;
+  private devPerfLongTaskCount = 0;
+  private devPerfLongTaskMaxMs = 0;
+  private devPerfSpikes: number[] = [];
+  private devPerfFunctions: Record<string, { totalMs: number; maxMs: number; calls: number }> = {};
+  private isDestroyed = false;
 
   // Dual Scene Roots: 3D Character on Left, Battlestation on Right
   public battlestationGroup!: THREE.Group;
@@ -56,6 +80,7 @@ export class Evoke3DExperience {
 
   // Scroll Progress (0 to 1)
   private scrollProgress = 0;
+  private isPortraitViewport = false;
 
   // Camera Orbit State (Wide panoramic framing for Character on Left + Setup on Right)
   private targetSpherical = { radius: 3.9, phi: 1.22, theta: 0.16 };
@@ -75,6 +100,15 @@ export class Evoke3DExperience {
   // Raycasting & Interaction
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(0, 0);
+  private dragIntersection = new THREE.Vector3();
+  private raycastHits: THREE.Intersection[] = [];
+  private pendingPointerMove = { x: 0, y: 0, isTouch: false };
+  private hasPendingPointerMove = false;
+  private flushPendingPointerMove: (() => void) | null = null;
+  private hoverClientX = 0;
+  private hoverClientY = 0;
+  private lastHoverPointerX = Number.NaN;
+  private lastHoverPointerY = Number.NaN;
   private interactiveMeshes: Map<THREE.Object3D, InteractiveObjectId> = new Map();
   private interactiveMeshList: THREE.Object3D[] = [];
   private lastMonitorDrawTime = 0;
@@ -140,6 +174,7 @@ export class Evoke3DExperience {
   // ----------------------------------------------------
   private headsetGroup!: THREE.Group;
   private sonicRings: THREE.Mesh[] = [];
+  private sonicRingDelays = new Float32Array(3);
   private headsetWobble = 0;
 
   // ----------------------------------------------------
@@ -160,6 +195,11 @@ export class Evoke3DExperience {
   private monitorCanvas!: HTMLCanvasElement;
   private monitorCtx!: CanvasRenderingContext2D;
   private monitorTexture!: THREE.CanvasTexture;
+  private monitorCursorCanvas!: HTMLCanvasElement;
+  private monitorCursorCtx!: CanvasRenderingContext2D;
+  private monitorCursorTexture!: THREE.CanvasTexture;
+  private monitorCursorMesh!: THREE.Mesh;
+  private monitorCursorDirty = true;
   private monitorBootProgress = 1.0;
   private monitorStandbyLedMesh!: THREE.Mesh;
   private monitorStandbyLight!: THREE.PointLight;
@@ -171,6 +211,7 @@ export class Evoke3DExperience {
   private keyboardKeyGroup!: THREE.Group;
   private keyboardWaveTime = 0;
   private isKeyboardHovered = false;
+  private keyboardWaveColor: string | null = null;
 
   // ----------------------------------------------------
   // ATMOSPHERIC PARTICLES & LIGHTING
@@ -206,6 +247,8 @@ export class Evoke3DExperience {
   private puppyPetTimer = 0;
 
   constructor(container: HTMLElement, callbacks: SceneCallbacks) {
+    this.devPerfEnabled = import.meta.env.DEV && new URLSearchParams(window.location.search).get('evokePerf') === '1';
+    const sceneInitStartedAt = this.devPerfEnabled ? performance.now() : 0;
     this.container = container;
     this.callbacks = callbacks;
     this.clock = new THREE.Clock();
@@ -216,7 +259,14 @@ export class Evoke3DExperience {
 
     // Camera
     const aspect = container.clientWidth / container.clientHeight;
-    const initialFov = container.clientWidth < 768 || aspect < 1.0 ? 54 : 44;
+    this.isPortraitViewport = aspect < 0.85;
+    const initialFov = this.isPortraitViewport ? 60 : container.clientWidth < 768 || aspect < 1.0 ? 54 : 44;
+    if (this.isPortraitViewport) {
+      this.currentSpherical.radius = 5.2;
+      this.targetSpherical.radius = 5.2;
+      this.currentLookAt.set(1.22, 2.1, 0);
+      this.targetLookAt.copy(this.currentLookAt);
+    }
     this.camera = new THREE.PerspectiveCamera(initialFov, aspect, 0.1, 40);
     this.updateCameraPosition();
 
@@ -229,7 +279,7 @@ export class Evoke3DExperience {
     });
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -252,8 +302,26 @@ export class Evoke3DExperience {
     this.initKeyboardAndMouse();
     this.initAtmosphere();
 
+    if (this.devPerfEnabled) {
+      this.devPerfWindowStart = performance.now();
+      if (typeof PerformanceObserver !== 'undefined') {
+        try {
+          this.devPerfObserver = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+              this.devPerfLongTaskCount += 1;
+              this.devPerfLongTaskMaxMs = Math.max(this.devPerfLongTaskMaxMs, entry.duration);
+            }
+          });
+          this.devPerfObserver.observe({ entryTypes: ['longtask'] });
+        } catch {
+          this.devPerfObserver = null;
+        }
+      }
+    }
+
     // Bind Interaction Events
     this.bindEvents();
+    if (this.devPerfEnabled) this.devSceneInitMs = performance.now() - sceneInitStartedAt;
 
     // Start loop
     this.animate();
@@ -272,6 +340,9 @@ export class Evoke3DExperience {
   private initCharacter() {
     // 3D Realistic Character on the left side
     this.character = new Esports3DCharacter(this.scene, new THREE.Vector3(-1.42, 0, 0.12));
+    if (this.isPortraitViewport) {
+      this.character.setWorldPosition(new THREE.Vector3(1.22, 2.3, 0.12));
+    }
     this.character.interactiveMeshes.forEach((mesh) => {
       this.registerInteractive(mesh, 'character_hero');
     });
@@ -293,8 +364,7 @@ export class Evoke3DExperience {
     this.mauveSpotLight.penumbra = 0.8;
     this.mauveSpotLight.decay = 2;
     this.mauveSpotLight.castShadow = true;
-    this.mauveSpotLight.shadow.mapSize.width = 1024;
-    this.mauveSpotLight.shadow.mapSize.height = 1024;
+    this.mauveSpotLight.shadow.mapSize.set(512, 512);
     this.mauveSpotLight.shadow.bias = -0.0005;
     this.scene.add(this.mauveSpotLight);
     this.scene.add(this.mauveSpotLight.target);
@@ -991,6 +1061,29 @@ export class Evoke3DExperience {
     this.monitorScreenMesh.position.set(0, 0.38, 0.021);
     monitorGroup.add(this.monitorScreenMesh);
 
+    // Keep the live cursor on a small overlay texture so dragging does not upload
+    // the full 1024x512 monitor canvas on every interaction frame.
+    this.monitorCursorCanvas = document.createElement('canvas');
+    this.monitorCursorCanvas.width = 256;
+    this.monitorCursorCanvas.height = 128;
+    this.monitorCursorCtx = this.monitorCursorCanvas.getContext('2d')!;
+    this.monitorCursorTexture = new THREE.CanvasTexture(this.monitorCursorCanvas);
+    this.monitorCursorTexture.colorSpace = THREE.SRGBColorSpace;
+    this.monitorCursorMesh = new THREE.Mesh(
+      screenGeo,
+      new THREE.MeshBasicMaterial({
+        map: this.monitorCursorTexture,
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false,
+      })
+    );
+    this.monitorCursorMesh.position.copy(this.monitorScreenMesh.position);
+    this.monitorCursorMesh.position.z += 0.001;
+    this.monitorCursorMesh.renderOrder = this.monitorScreenMesh.renderOrder + 1;
+    monitorGroup.add(this.monitorCursorMesh);
+    this.drawMonitorCursor();
+
     // Register interactions:
     // Clicking power button toggles power state!
     this.registerInteractive(powerButtonMesh, 'monitor_power');
@@ -1187,31 +1280,37 @@ export class Evoke3DExperience {
       }
     }
 
-    // 5. Authentic Minecraft White Crosshair Reticle (Synced with mouse dragging)
-    if (bootAlpha > 0.1) {
-      const cx = this.monitorCursorX;
-      const cy = this.monitorCursorY;
-
-      ctx.fillStyle = '#ffffff';
-      // Horizontal bar
-      ctx.fillRect(cx - 10, cy - 2, 20, 4);
-      // Vertical bar
-      ctx.fillRect(cx - 2, cy - 10, 4, 20);
-      // Black border
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - 11, cy - 3, 22, 6);
-      ctx.strokeRect(cx - 3, cy - 11, 6, 22);
-
-      // Coordinate telemetry tag
-      ctx.fillStyle = '#55ffff';
-      ctx.font = 'bold 12px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(`XYZ: [${Math.round(cx)}, 64, ${Math.round(cy)}]`, cx + 16, cy + 16);
-    }
-
     ctx.restore();
     this.monitorTexture.needsUpdate = true;
+  }
+
+  private drawMonitorCursor() {
+    const ctx = this.monitorCursorCtx;
+    const scale = this.monitorCursorCanvas.width / 1024;
+    const cx = this.monitorCursorX * scale;
+    const cy = this.monitorCursorY * scale;
+    ctx.clearRect(0, 0, this.monitorCursorCanvas.width, this.monitorCursorCanvas.height);
+
+    if (this.monitorBootProgress > 0.1) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 2.5, cy - 0.5, 5, 1);
+      ctx.fillRect(cx - 0.5, cy - 2.5, 1, 5);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.25;
+      ctx.strokeRect(cx - 2.75, cy - 0.75, 5.5, 1.5);
+      ctx.strokeRect(cx - 0.75, cy - 2.75, 1.5, 5.5);
+      ctx.fillStyle = '#55ffff';
+      ctx.font = 'bold 3px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(
+        `XYZ: [${Math.round(this.monitorCursorX)}, 64, ${Math.round(this.monitorCursorY)}]`,
+        cx + 4,
+        cy + 4
+      );
+    }
+
+    this.monitorCursorTexture.needsUpdate = true;
+    this.monitorCursorDirty = false;
   }
 
   // ========================================================
@@ -1867,6 +1966,7 @@ export class Evoke3DExperience {
 
   public toggleMonitorPower() {
     this.isMonitorPowered = !this.isMonitorPowered;
+    this.monitorCursorDirty = true;
     soundscape.playPowerToggle(this.isMonitorPowered);
 
     if (this.isMonitorPowered) {
@@ -1911,16 +2011,7 @@ export class Evoke3DExperience {
     this.sonicRings.forEach((ring, idx) => {
       ring.scale.set(0.8, 0.8, 0.8);
       (ring.material as THREE.MeshBasicMaterial).opacity = 0.9;
-      setTimeout(() => {
-        const expand = () => {
-          ring.scale.addScalar(0.04);
-          (ring.material as THREE.MeshBasicMaterial).opacity *= 0.92;
-          if ((ring.material as THREE.MeshBasicMaterial).opacity > 0.02) {
-            requestAnimationFrame(expand);
-          }
-        };
-        requestAnimationFrame(expand);
-      }, idx * 100);
+      this.sonicRingDelays[idx] = -(idx * 0.1);
     });
   }
 
@@ -1936,12 +2027,16 @@ export class Evoke3DExperience {
       const p = this.scrollProgress;
       if (p <= 0.25) {
         // Stage 1: Moody room overview
-        this.targetSpherical.radius = THREE.MathUtils.lerp(3.4, 3.2, p / 0.25);
+        this.targetSpherical.radius = this.isPortraitViewport
+          ? THREE.MathUtils.lerp(5.2, 4.8, p / 0.25)
+          : THREE.MathUtils.lerp(3.4, 3.2, p / 0.25);
         if (!this.isUserOrbited || p > 0.02) {
           this.targetSpherical.phi = THREE.MathUtils.lerp(1.22, 1.25, p / 0.25);
-          this.targetSpherical.theta = THREE.MathUtils.lerp(0.38, 0.26, p / 0.25);
+          this.targetSpherical.theta = this.isPortraitViewport
+            ? THREE.MathUtils.lerp(0.16, 0.22, p / 0.25)
+            : THREE.MathUtils.lerp(0.38, 0.26, p / 0.25);
         }
-        this.targetLookAt.set(0, 0.95, 0);
+        this.targetLookAt.set(this.isPortraitViewport ? 1.22 : 0, this.isPortraitViewport ? 2.1 : 0.95, 0);
       } else if (p <= 0.6) {
         // Stage 2: Kinetic focus on setup
         const t = (p - 0.25) / 0.35;
@@ -1986,7 +2081,7 @@ export class Evoke3DExperience {
       this.targetSpherical.radius = 3.8;
       this.targetSpherical.phi = 1.35;
       this.targetSpherical.theta = 0.0;
-      this.targetLookAt.set(0, 1.05, 0);
+      this.targetLookAt.set(this.isPortraitViewport ? 1.22 : 0, this.isPortraitViewport ? 2.1 : 1.05, 0);
     } else {
       // Return to orbit mode (re-aligns to scroll position)
       this.targetLookAt.set(0, 0.95, 0);
@@ -2021,10 +2116,8 @@ export class Evoke3DExperience {
 
       // Raycast to check for interactive objects
       this.raycaster.setFromCamera(this.pointer, this.camera);
-      const intersects = this.raycaster.intersectObjects(
-        this.interactiveMeshList,
-        true
-      );
+      this.raycastHits.length = 0;
+      const intersects = this.raycaster.intersectObjects(this.interactiveMeshList, false, this.raycastHits);
 
       if (intersects.length > 0) {
         const hitMesh = intersects[0].object;
@@ -2046,9 +2139,9 @@ export class Evoke3DExperience {
           this.chairDragStartCoord = { x: clientX, y: clientY };
           this.chairDragStartSwivel = this.chairSwivelAngle;
           // Calculate offset on floor plane
-          const hitFloor = new THREE.Vector3();
+          const hitFloor = this.dragIntersection;
           if (this.raycaster.ray.intersectPlane(this.chairFloorPlane, hitFloor)) {
-            const localFloor = this.battlestationGroup.worldToLocal(hitFloor.clone());
+            const localFloor = this.battlestationGroup.worldToLocal(hitFloor);
             this.chairDragOffset.subVectors(this.chairRoot.position, localFloor);
           }
           this.callbacks.onChairDragStart();
@@ -2077,11 +2170,7 @@ export class Evoke3DExperience {
     };
 
     // Pointer Move
-    const onPointerMove = (e: MouseEvent | TouchEvent) => {
-      const isTouch = 'touches' in e;
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
+    const processPointerMove = (clientX: number, clientY: number, isTouch: boolean) => {
       this.updatePointerCoords(clientX, clientY);
 
       // Mouse Parallax target
@@ -2101,9 +2190,9 @@ export class Evoke3DExperience {
       // 1. Controller Dragging in 3D
       if (this.isDraggingController) {
         this.raycaster.setFromCamera(this.pointer, this.camera);
-        const intersectPoint = new THREE.Vector3();
+        const intersectPoint = this.dragIntersection;
         if (this.raycaster.ray.intersectPlane(this.deskDragPlane, intersectPoint)) {
-          const localPoint = this.battlestationGroup.worldToLocal(intersectPoint.clone());
+          const localPoint = this.battlestationGroup.worldToLocal(intersectPoint);
           // Clamp to desk bounds
           let targetX = THREE.MathUtils.clamp(localPoint.x, -0.65, 0.65);
           let targetZ = THREE.MathUtils.clamp(localPoint.z, -0.15, 0.42);
@@ -2136,17 +2225,22 @@ export class Evoke3DExperience {
       // 2. Gaming Mouse Dragging (Moves cursor live on monitor screen!)
       if (this.isDraggingMouse) {
         this.raycaster.setFromCamera(this.pointer, this.camera);
-        const intersectPoint = new THREE.Vector3();
+        const intersectPoint = this.dragIntersection;
         if (this.raycaster.ray.intersectPlane(this.deskDragPlane, intersectPoint)) {
-          const localPoint = this.battlestationGroup.worldToLocal(intersectPoint.clone());
+          const localPoint = this.battlestationGroup.worldToLocal(intersectPoint);
           const clampedX = THREE.MathUtils.clamp(localPoint.x, 0.22, 0.48);
           const clampedZ = THREE.MathUtils.clamp(localPoint.z, -0.06, 0.28);
           this.mouseGroup.position.set(clampedX, 0.885, clampedZ);
 
           const normX = (clampedX - 0.22) / (0.48 - 0.22);
           const normY = (clampedZ - (-0.06)) / (0.28 - (-0.06));
-          this.monitorCursorX = THREE.MathUtils.clamp(normX * 1024, 25, 995);
-          this.monitorCursorY = THREE.MathUtils.clamp((1.0 - normY) * 512, 25, 485);
+          const cursorX = THREE.MathUtils.clamp(normX * 1024, 25, 995);
+          const cursorY = THREE.MathUtils.clamp((1.0 - normY) * 512, 25, 485);
+          if (cursorX !== this.monitorCursorX || cursorY !== this.monitorCursorY) {
+            this.monitorCursorX = cursorX;
+            this.monitorCursorY = cursorY;
+            this.monitorCursorDirty = true;
+          }
           this.callbacks.onMouseDrag?.(normX, normY);
         }
         return;
@@ -2159,9 +2253,9 @@ export class Evoke3DExperience {
         this.chairTargetSwivel = this.chairDragStartSwivel + deltaX * 0.022;
 
         this.raycaster.setFromCamera(this.pointer, this.camera);
-        const intersectFloor = new THREE.Vector3();
+        const intersectFloor = this.dragIntersection;
         if (this.raycaster.ray.intersectPlane(this.chairFloorPlane, intersectFloor)) {
-          const localFloor = this.battlestationGroup.worldToLocal(intersectFloor.clone());
+          const localFloor = this.battlestationGroup.worldToLocal(intersectFloor);
           const rawTargetX = localFloor.x + this.chairDragOffset.x;
           const rawTargetZ = localFloor.z + this.chairDragOffset.z;
           const targetX = THREE.MathUtils.clamp(rawTargetX, -1.3, 1.3);
@@ -2213,11 +2307,37 @@ export class Evoke3DExperience {
       }
 
       // 5. Hover Raycasting Detection
+      this.hoverClientX = clientX;
+      this.hoverClientY = clientY;
       this.performHoverCheck(clientX, clientY);
+    };
+
+    this.flushPendingPointerMove = () => {
+      if (!this.hasPendingPointerMove) return;
+      const { x, y, isTouch } = this.pendingPointerMove;
+      this.hasPendingPointerMove = false;
+      const startedAt = this.devPerfEnabled ? performance.now() : 0;
+      processPointerMove(x, y, isTouch);
+      if (this.devPerfEnabled) {
+        this.devPerfPointerMoveCount += 1;
+        const duration = performance.now() - startedAt;
+        this.devPerfPointerMoveTotalMs += duration;
+        this.devPerfPointerMoveMaxMs = Math.max(this.devPerfPointerMoveMaxMs, duration);
+      }
+    };
+
+    const onPointerMove = (e: MouseEvent | TouchEvent) => {
+      const isTouch = 'touches' in e;
+      this.pendingPointerMove.x = isTouch ? e.touches[0].clientX : e.clientX;
+      this.pendingPointerMove.y = isTouch ? e.touches[0].clientY : e.clientY;
+      this.pendingPointerMove.isTouch = isTouch;
+      this.hasPendingPointerMove = true;
+      if (this.devPerfEnabled) this.devPerfRawPointerEventCount += 1;
     };
 
     // Pointer Up
     const onPointerUp = (e: MouseEvent | TouchEvent) => {
+      this.flushPendingPointerMove?.();
       const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as MouseEvent).clientY;
 
@@ -2250,10 +2370,8 @@ export class Evoke3DExperience {
         // Distinct click / tap on object
         this.updatePointerCoords(clientX, clientY);
         this.raycaster.setFromCamera(this.pointer, this.camera);
-        const intersects = this.raycaster.intersectObjects(
-          this.interactiveMeshList,
-          true
-        );
+        this.raycastHits.length = 0;
+        const intersects = this.raycaster.intersectObjects(this.interactiveMeshList, false, this.raycastHits);
 
         if (intersects.length > 0) {
           const hitMesh = intersects[0].object;
@@ -2276,6 +2394,7 @@ export class Evoke3DExperience {
       this.isDraggingController = false;
       this.isDraggingMouse = false;
       this.clickedObjectId = null;
+      this.hasPendingPointerMove = false;
       isTouchScrolling = false;
     };
 
@@ -2298,10 +2417,27 @@ export class Evoke3DExperience {
       const w = this.container.clientWidth;
       const h = this.container.clientHeight;
       const aspect = w / h;
+      const wasPortrait = this.isPortraitViewport;
+      this.isPortraitViewport = aspect < 0.85;
       this.camera.aspect = aspect;
-      this.camera.fov = w < 768 || aspect < 1.0 ? 54 : 44;
+      this.camera.fov = this.isPortraitViewport ? 60 : w < 768 || aspect < 1.0 ? 54 : 44;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(w, h);
+      if (wasPortrait !== this.isPortraitViewport) {
+        this.character?.setWorldPosition(
+          this.isPortraitViewport
+            ? new THREE.Vector3(1.22, 2.3, 0.12)
+            : new THREE.Vector3(-1.42, 0, 0.12)
+        );
+        if (this.mode === 'orbit') this.setScrollProgress(this.scrollProgress);
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if ((this.isDraggingChair || this.isDraggingController || this.isDraggingMouse) && e.cancelable) {
+        e.preventDefault();
+      }
+      onPointerMove(e);
     };
 
     el.addEventListener('mousedown', onPointerDown);
@@ -2311,18 +2447,20 @@ export class Evoke3DExperience {
     el.addEventListener('wheel', onWheel, { passive: true });
 
     el.addEventListener('touchstart', onPointerDown, { passive: true });
-    window.addEventListener(
-      'touchmove',
-      (e: TouchEvent) => {
-        if ((this.isDraggingChair || this.isDraggingController || this.isDraggingMouse) && e.cancelable) {
-          e.preventDefault();
-        }
-        onPointerMove(e);
-      },
-      { passive: false }
-    );
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
     window.addEventListener('touchend', onPointerUp, { passive: true });
     window.addEventListener('resize', onResize);
+    this.removeEventListeners = () => {
+      el.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('blur', onWindowBlur);
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchstart', onPointerDown);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onPointerUp);
+      window.removeEventListener('resize', onResize);
+    };
   }
 
   private updatePointerCoords(clientX: number, clientY: number) {
@@ -2343,11 +2481,23 @@ export class Evoke3DExperience {
   }
 
   private performHoverCheck(clientX: number, clientY: number) {
+    if (this.pointer.x === this.lastHoverPointerX && this.pointer.y === this.lastHoverPointerY) return;
+    this.lastHoverPointerX = this.pointer.x;
+    this.lastHoverPointerY = this.pointer.y;
     this.raycaster.setFromCamera(this.pointer, this.camera);
+    const raycastStartedAt = this.devPerfEnabled ? performance.now() : 0;
+    this.raycastHits.length = 0;
     const intersects = this.raycaster.intersectObjects(
       this.interactiveMeshList,
-      true
+      false,
+      this.raycastHits
     );
+    if (this.devPerfEnabled) {
+      const raycastDuration = performance.now() - raycastStartedAt;
+      this.devPerfHoverTotalMs += raycastDuration;
+      this.devPerfHoverMaxMs = Math.max(this.devPerfHoverMaxMs, raycastDuration);
+      this.devPerfHoverCount += 1;
+    }
 
     if (intersects.length > 0) {
       const hitMesh = intersects[0].object;
@@ -2404,20 +2554,27 @@ export class Evoke3DExperience {
 
   private animate = () => {
     this.animFrameId = requestAnimationFrame(this.animate);
+    const frameStartedAt = this.devPerfEnabled ? performance.now() : 0;
+    this.flushPendingPointerMove?.();
+    const updateStartedAt = this.devPerfEnabled ? performance.now() : 0;
     const delta = this.clock.getDelta();
     const time = this.clock.elapsedTime;
 
     // 1. Camera
+    const cameraStartedAt = this.devPerfEnabled ? performance.now() : 0;
     this.updateCameraPosition();
+    if (this.devPerfEnabled) this.recordDevFunctionTiming('camera', cameraStartedAt);
 
     // 1b. Update 3D Character on Left (breathing, ball spin, head tracking)
     if (this.character) {
+      const characterStartedAt = this.devPerfEnabled ? performance.now() : 0;
       this.character.update(
         time,
         delta,
         THREE.MathUtils.clamp(this.pointer.x, -1, 1),
         THREE.MathUtils.clamp(this.pointer.y, -1, 1)
       );
+      if (this.devPerfEnabled) this.recordDevFunctionTiming('character', characterStartedAt);
     }
 
     // 2. Controller Dynamics (Drag & Settle Physics)
@@ -2484,27 +2641,38 @@ export class Evoke3DExperience {
     }
 
     // 6. Monitor Screen Canvas Animation & Power Transitions
-    const isBooting = this.monitorBootProgress > 0 && this.monitorBootProgress < 1.0;
+    const previousBootProgress = this.monitorBootProgress;
+    const isBooting = previousBootProgress > 0 && previousBootProgress < 1.0;
     if (this.isMonitorPowered) {
       this.monitorBootProgress = Math.min(this.monitorBootProgress + 0.035, 1.0);
     } else {
       this.monitorBootProgress = Math.max(this.monitorBootProgress - 0.04, 0.0);
     }
-    const now = performance.now();
-    if (this.isDraggingMouse || isBooting || now - this.lastMonitorDrawTime > 66) {
-      this.lastMonitorDrawTime = now;
-      this.drawMonitorScreen(time);
+    if ((previousBootProgress > 0.1) !== (this.monitorBootProgress > 0.1)) {
+      this.monitorCursorDirty = true;
     }
+    const now = performance.now();
+    if (isBooting || this.lastMonitorDrawTime === 0) {
+      this.lastMonitorDrawTime = now;
+      const monitorDrawStartedAt = this.devPerfEnabled ? performance.now() : 0;
+      this.drawMonitorScreen(time);
+      if (this.devPerfEnabled) this.recordDevFunctionTiming('monitorCanvas', monitorDrawStartedAt);
+    }
+    if (this.monitorCursorDirty) this.drawMonitorCursor();
+    (this.monitorCursorMesh.material as THREE.MeshBasicMaterial).opacity = this.monitorBootProgress;
 
     // 7. Keyboard Reactive Light Waves
     if (this.isKeyboardHovered || this.keyboardWaveTime > 0) {
       const keys = this.keyboardKeyGroup.children as THREE.Mesh[];
-      keys.forEach((key) => {
-        const wave = Math.sin(time * 6 - key.position.x * 12) * 0.5 + 0.5;
-        (key.material as THREE.MeshStandardMaterial).color.set(
-          wave > 0.6 ? this.themePalette.accent : this.themePalette.surface
-        );
-      });
+      const lastKey = keys[keys.length - 1];
+      if (lastKey) {
+        const wave = Math.sin(time * 6 - lastKey.position.x * 12) * 0.5 + 0.5;
+        const color = wave > 0.6 ? this.themePalette.accent : this.themePalette.surface;
+        if (color !== this.keyboardWaveColor) {
+          (lastKey.material as THREE.MeshStandardMaterial).color.set(color);
+          this.keyboardWaveColor = color;
+        }
+      }
       if (this.keyboardWaveTime > 0) {
         this.keyboardWaveTime += 0.02;
         if (this.keyboardWaveTime > 2.0) this.keyboardWaveTime = 0;
@@ -2512,10 +2680,10 @@ export class Evoke3DExperience {
     }
 
     // 8. Atmospheric Dust Particle Drift
-    if (this.dustParticles) {
+    if (this.dustParticles && Math.floor(time * 30) !== Math.floor((time - delta) * 30)) {
       const pos = this.dustParticles.geometry.attributes.position.array as Float32Array;
       for (let i = 1; i < pos.length; i += 3) {
-        pos[i] += 0.0012;
+        pos[i] += 0.0012 * (delta * 60);
         if (pos[i] > 3.5) pos[i] = 0.2;
       }
       this.dustParticles.geometry.attributes.position.needsUpdate = true;
@@ -2544,11 +2712,111 @@ export class Evoke3DExperience {
     }
 
     // 12. Free-Roaming Minecraft Puppy Autonomous AI
+    const puppyStartedAt = this.devPerfEnabled ? performance.now() : 0;
     this.updatePuppy(time, delta);
+    if (this.devPerfEnabled) this.recordDevFunctionTiming('puppy', puppyStartedAt);
+
+    // Sonic pulses share the scene loop so they can be profiled and cancelled with it.
+    for (let i = 0; i < this.sonicRings.length; i += 1) {
+      const ring = this.sonicRings[i];
+      const delay = this.sonicRingDelays[i];
+      if (delay < 0) {
+        this.sonicRingDelays[i] = Math.min(0, delay + delta);
+      } else if (delay === 0 && (ring.material as THREE.MeshBasicMaterial).opacity > 0.02) {
+        const frameScale = delta * 60;
+        ring.scale.addScalar(0.04 * frameScale);
+        (ring.material as THREE.MeshBasicMaterial).opacity *= Math.pow(0.92, frameScale);
+        if ((ring.material as THREE.MeshBasicMaterial).opacity <= 0.02) {
+          this.sonicRingDelays[i] = 0.0001;
+        }
+      }
+    }
+
+    if (this.devPerfEnabled) {
+      const updateDuration = performance.now() - updateStartedAt;
+      this.devPerfUpdateTotalMs += updateDuration;
+      this.devPerfUpdateMaxMs = Math.max(this.devPerfUpdateMaxMs, updateDuration);
+    }
 
     // Render
+    const renderStartedAt = this.devPerfEnabled ? performance.now() : 0;
     this.renderer.render(this.scene, this.camera);
+
+    if (this.devPerfEnabled) {
+      const renderDuration = performance.now() - renderStartedAt;
+      this.devPerfRenderTotalMs += renderDuration;
+      this.devPerfRenderMaxMs = Math.max(this.devPerfRenderMaxMs, renderDuration);
+      const frameDuration = performance.now() - frameStartedAt;
+      this.devPerfFrameCount += 1;
+      this.devPerfFrameTotalMs += frameDuration;
+      this.devPerfFrameMaxMs = Math.max(this.devPerfFrameMaxMs, frameDuration);
+      if (frameDuration > 32) {
+        this.devPerfSpikes.push(frameDuration);
+        if (this.devPerfSpikes.length > 20) this.devPerfSpikes.shift();
+      }
+      const now = performance.now();
+      if (now - this.devPerfWindowStart >= 1000) {
+        const intervalMs = now - this.devPerfWindowStart;
+        (window as Window & { __EVOKE_PERF__?: Record<string, unknown> }).__EVOKE_PERF__ = {
+          intervalMs,
+          fps: (this.devPerfFrameCount * 1000) / intervalMs,
+          frameCount: this.devPerfFrameCount,
+          averageCpuFrameMs: this.devPerfFrameCount ? this.devPerfFrameTotalMs / this.devPerfFrameCount : 0,
+          maxCpuFrameMs: this.devPerfFrameMaxMs,
+          averageSceneUpdateMs: this.devPerfFrameCount ? this.devPerfUpdateTotalMs / this.devPerfFrameCount : 0,
+          maxSceneUpdateMs: this.devPerfUpdateMaxMs,
+          averageRenderSubmissionMs: this.devPerfFrameCount ? this.devPerfRenderTotalMs / this.devPerfFrameCount : 0,
+          maxRenderSubmissionMs: this.devPerfRenderMaxMs,
+          averagePointerMoveMs: this.devPerfPointerMoveCount ? this.devPerfPointerMoveTotalMs / this.devPerfPointerMoveCount : 0,
+          maxPointerMoveMs: this.devPerfPointerMoveMaxMs,
+          pointerMoveCount: this.devPerfPointerMoveCount,
+          rawPointerEventCount: this.devPerfRawPointerEventCount,
+          averageHoverRaycastMs: this.devPerfHoverCount ? this.devPerfHoverTotalMs / this.devPerfHoverCount : 0,
+          maxHoverRaycastMs: this.devPerfHoverMaxMs,
+          hoverRaycastCount: this.devPerfHoverCount,
+          sceneInitMs: this.devSceneInitMs,
+          longTaskCount: this.devPerfLongTaskCount,
+          maxLongTaskMs: this.devPerfLongTaskMaxMs,
+          frameSpikes: this.devPerfSpikes.length,
+          latestSpikeMs: this.devPerfSpikes[this.devPerfSpikes.length - 1] ?? 0,
+          frameSpikeMs: [...this.devPerfSpikes],
+          functionTimings: { ...this.devPerfFunctions },
+          drawCalls: this.renderer.info.render.calls,
+          triangles: this.renderer.info.render.triangles,
+          geometries: this.renderer.info.memory.geometries,
+          textures: this.renderer.info.memory.textures,
+        };
+        this.devPerfWindowStart = now;
+        this.devPerfFrameCount = 0;
+        this.devPerfFrameTotalMs = 0;
+        this.devPerfFrameMaxMs = 0;
+        this.devPerfHoverTotalMs = 0;
+        this.devPerfHoverMaxMs = 0;
+        this.devPerfHoverCount = 0;
+        this.devPerfPointerMoveCount = 0;
+        this.devPerfRawPointerEventCount = 0;
+        this.devPerfPointerMoveTotalMs = 0;
+        this.devPerfPointerMoveMaxMs = 0;
+        this.devPerfLongTaskCount = 0;
+        this.devPerfLongTaskMaxMs = 0;
+        this.devPerfSpikes = [];
+        this.devPerfFunctions = {};
+        this.devPerfUpdateTotalMs = 0;
+        this.devPerfUpdateMaxMs = 0;
+        this.devPerfRenderTotalMs = 0;
+        this.devPerfRenderMaxMs = 0;
+      }
+    }
   };
+
+  private recordDevFunctionTiming(name: string, startedAt: number) {
+    const duration = performance.now() - startedAt;
+    const timing = this.devPerfFunctions[name] ?? { totalMs: 0, maxMs: 0, calls: 0 };
+    timing.totalMs += duration;
+    timing.maxMs = Math.max(timing.maxMs, duration);
+    timing.calls += 1;
+    this.devPerfFunctions[name] = timing;
+  }
 
   private updatePuppy(time: number, delta: number) {
     if (!this.puppyGroup) return;
@@ -2669,6 +2937,7 @@ export class Evoke3DExperience {
 
   public setEnvironmentPalette(accent: string, highlight: string, tertiary: string, surface: string) {
     this.themePalette = { accent, highlight, tertiary, surface };
+    this.keyboardWaveColor = null;
     this.themeMaterials.forEach(({ material, role, emissive }) => {
       const color = this.themePalette[role];
       material.color.set(color);
@@ -2726,10 +2995,37 @@ export class Evoke3DExperience {
   }
 
   public destroy() {
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    if (this.isDestroyed) return;
+    this.isDestroyed = true;
+    if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+    this.animFrameId = null;
+    this.removeEventListeners?.();
+    this.removeEventListeners = null;
+    this.flushPendingPointerMove = null;
+    this.hasPendingPointerMove = false;
+    this.devPerfObserver?.disconnect();
+    this.devPerfObserver = null;
+
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    const textures = new Set<THREE.Texture>();
+    this.scene.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.geometry) geometries.add(mesh.geometry);
+      const objectMaterials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+      for (const material of objectMaterials) {
+        materials.add(material);
+        for (const value of Object.values(material)) {
+          if (value instanceof THREE.Texture) textures.add(value);
+        }
+      }
+    });
+    textures.forEach((texture) => texture.dispose());
+    materials.forEach((material) => material.dispose());
+    geometries.forEach((geometry) => geometry.dispose());
     if (this.character) this.character.destroy();
     this.renderer.dispose();
-    if (this.container && this.renderer.domElement) {
+    if (this.renderer.domElement.parentNode === this.container) {
       this.container.removeChild(this.renderer.domElement);
     }
   }

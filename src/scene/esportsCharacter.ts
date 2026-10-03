@@ -233,6 +233,7 @@ export class Esports3DCharacter {
     this.keyLight.angle = Math.PI / 4.0;
     this.keyLight.penumbra = 0.6;
     this.keyLight.castShadow = true;
+    this.keyLight.shadow.mapSize.set(512, 512);
     scene.add(this.keyLight);
     scene.add(this.keyLight.target);
 
@@ -690,6 +691,13 @@ export class Esports3DCharacter {
     });
     this.standSurfaceMaterials.forEach((material) => material.color.set(surface));
     this.updateHoloBadge();
+  }
+
+  public setWorldPosition(position: THREE.Vector3) {
+    const offset = position.clone().sub(this.root.position);
+    this.root.position.copy(position);
+    this.keyLight.position.add(offset);
+    this.keyLight.target.position.add(offset);
   }
 
   // ========================================================

@@ -60,7 +60,7 @@ export const FirstScreenOverlay: React.FC<FirstScreenOverlayProps> = ({
       {/* ========================================================= */}
       {/* BOLD THEMED SCROLL CUE  */}
       {/* ========================================================= */}
-      <div className="absolute bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none z-50">
+      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none z-50">
         <div className="flex flex-col items-center gap-3">
           <span className="theme-accent-text theme-accent-glow-text font-display font-black text-xs sm:text-sm tracking-[0.4em] uppercase drop-shadow-md">
             SCROLL TO EXPLORE
