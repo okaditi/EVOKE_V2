@@ -10,6 +10,7 @@ body, #root {
   width: 100%;
   min-height: 100vh;
 }
+body { font-family: "Barlow Condensed", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 :root {
   /* VALORANT */
   --val-crimson: #FF4655;
@@ -55,8 +56,9 @@ body, #root {
   --color-charcoal: #171519;
   --color-burnt: #E66A3A;
 
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "Barlow Condensed", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-pixel: "Silkscreen", "VT323", monospace;
 }
 
@@ -575,4 +577,119 @@ body, #root {
 /* Hardware accelerated layer */
 .will-change-transform {
   will-change: transform, opacity, filter;
+}
+
+/* Tactical editorial layer for the scroll story, inspired by the supplied arena reference. */
+.evoke-story-shell {
+  background-image: linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px), url("/assets/Neon Cyberpunk HUD Grid.png");
+  background-size: 10vw 10vw, 10vw 10vw, cover;
+  background-position: center center, center center, center center;
+  background-repeat: repeat, repeat, no-repeat;
+}
+.evoke-story-grid {
+  background: radial-gradient(ellipse at 72% 50%, transparent 10%, rgba(0,0,0,.28) 82%), linear-gradient(90deg,rgba(0,0,0,.45),transparent 65%);
+}
+.evoke-story-frame {
+  border: 1px solid rgba(244,240,234,.42);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.4);
+}
+.evoke-story-frame::before, .evoke-story-frame::after {
+  content: ""; position: absolute; width: 13px; height: 13px; border-color: rgba(244,240,234,.85); border-style: solid;
+}
+.evoke-story-frame::before { top:-1px; left:-1px; border-width:1px 0 0 1px; }
+.evoke-story-frame::after { right:-1px; bottom:-1px; border-width:0 1px 1px 0; }
+.evoke-arrival { max-width: 1440px; min-height: min(76vh, 820px); position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 24px clamp(20px,4vw,68px) 62px; }
+.evoke-arrival::before { content:"PLAY.\A PROVE.\A PROGRESS."; white-space:pre; position:absolute; z-index:0; left:0; top:50%; transform:translateY(-50%); color:rgba(255,255,255,.14); font:900 clamp(45px,8vw,116px)/.86 "Barlow Condensed",sans-serif; letter-spacing:-.065em; text-align:left; pointer-events:none; }
+.evoke-arrival > * { position:relative; z-index:1; }
+.evoke-arrival-kicker { grid-column: 1 / -1; display:flex; align-items:center; gap:14px; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,.28); font:700 11px ui-monospace,monospace; letter-spacing:.32em; color:#fff; }
+.evoke-arrival-kicker img { width:42px; height:42px; object-fit:contain; }
+.evoke-arrival-kicker b { color:var(--theme-accent); }
+.evoke-arrival-kicker span { color:var(--theme-accent); padding:0 12px; }
+.evoke-arrival-title { grid-column:1; display:flex; flex-direction:column; align-self:center; margin:22px 0 14px; font:900 clamp(58px,10.1vw,152px)/.83 "Space Grotesk",sans-serif; letter-spacing:-.075em; color:#f8f7f5; text-shadow:0 2px 0 rgba(255,255,255,.3),0 10px 50px #000; }
+.evoke-arrival-title > span { width:max-content; max-width:100%; white-space:nowrap; background:repeating-linear-gradient(0deg,transparent 0 5px,rgba(0,0,0,.13) 5px 6px); }
+.evoke-arrival-bottom { grid-column:1; display:flex; align-items:center; gap:clamp(20px,4vw,60px); }
+.evoke-arrival-bottom p { max-width:350px; color:rgba(255,255,255,.75); font:500 14px/1.65 ui-monospace,monospace; }
+.evoke-arrival-side { position:absolute; top:26%; color:rgba(255,255,255,.62); font:600 9px/2 ui-monospace,monospace; letter-spacing:.24em; }
+.evoke-arrival-side i { display:block; width:22px; height:2px; margin-bottom:13px; background:var(--theme-accent); }
+.evoke-arrival-side-left { left:0; transform:translateX(-110%); }
+.evoke-arrival-side-right { right:0; }
+.evoke-arrival-meta { position:absolute; left:clamp(20px,4vw,68px); right:clamp(20px,4vw,68px); bottom:10px; display:flex; justify-content:space-between; color:rgba(255,255,255,.55); font:700 9px ui-monospace,monospace; letter-spacing:.32em; }
+
+/* Final landing section: full-screen composition over the supplied sunset artwork. */
+.evoke-final-shell { align-items:stretch; padding:0 !important; background-image:linear-gradient(90deg,rgba(7,6,8,.24),rgba(7,6,8,.12) 58%,rgba(7,6,8,.18)),url("/assets/Voxel Cyberpunk Gamer Lair at Sunset.png"); background-size:cover; background-position:center; background-repeat:no-repeat; background-color:#09090a !important; }
+.evoke-final-shell > .evoke-story-grid,
+.evoke-final-shell > .evoke-story-frame,
+.evoke-final-shell > .theme-story-aura { display:none; }
+.evoke-final-shell > .relative { width:100%; max-width:1740px; height:100%; box-sizing:border-box; margin:0 auto; padding:100px clamp(18px,2vw,32px) 36px; }
+.evoke-final { width:100%; height:100%; min-height:0; margin:0 auto; display:grid; grid-template-rows:minmax(0,1fr) 150px; color:#f4f0ea; }
+.evoke-final-hero { display:grid; grid-template-columns:minmax(400px,40%) 1fr; min-height:0; }
+.evoke-final-copy { padding:clamp(24px,4vh,48px) 0 20px clamp(28px,5vw,84px); align-self:center; max-width:620px; }
+.evoke-final-kicker { display:flex; align-items:center; gap:14px; color:rgba(244,240,234,.52); font:500 10px "IBM Plex Mono",monospace; letter-spacing:.23em; }
+.evoke-final-kicker span { color:rgba(244,240,234,.76); }
+.evoke-final-kicker i { width:24px; height:1px; background:#fa4051; }
+.evoke-final-copy h1 { margin:24px 0 12px; color:#f6f3f0; font:900 clamp(68px,7.25vw,116px)/.82 "Barlow Condensed",sans-serif; letter-spacing:-.04em; }
+.evoke-final-copy h1 span { color:#fa4051; }
+.evoke-final-rule { width:46px; height:2px; margin:20px 0 14px; background:#fa4051; }
+.evoke-final-copy p { max-width:440px; margin:0; color:rgba(244,240,234,.76); font:400 13px/1.65 "IBM Plex Mono",monospace; }
+.evoke-final-art-space { min-width:0; }
+.evoke-final-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid rgba(244,240,234,.25); background:rgba(8,8,9,.56); }
+.evoke-final-card { position:relative; display:flex; align-items:center; gap:clamp(12px,2.1vw,32px); min-width:0; padding:18px clamp(14px,2.5vw,40px); border:0; border-right:1px solid rgba(244,240,234,.14); color:#f4f0ea; background:transparent; text-align:left; cursor:pointer; }
+.evoke-final-card:last-child { border-right:0; }
+.evoke-final-card-icon { display:grid; width:62px; height:62px; flex:0 0 auto; place-items:center; border:1px solid rgba(250,64,81,.65); color:#f4f0ea; }
+.evoke-final-card-icon svg { width:29px; height:29px; }
+.evoke-final-card:nth-child(2) .evoke-final-card-icon { color:#00e4c1; }
+.evoke-final-card-copy { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.evoke-final-card-copy b { font:800 17px "Barlow Condensed",sans-serif; letter-spacing:.11em; }
+.evoke-final-card-copy small { max-width:230px; color:rgba(244,240,234,.72); font:400 11px/1.6 "IBM Plex Mono",monospace; }
+.evoke-final-card-number { position:absolute; top:22px; right:clamp(12px,2.5vw,40px); color:#fa4051; font:700 12px "IBM Plex Mono",monospace; }
+.evoke-final-card-arrow { position:absolute; right:clamp(12px,2.5vw,40px); bottom:25px; width:17px; height:17px; }
+@media(max-width:760px) {
+  .evoke-final-shell { align-items:flex-start; overflow-y:auto; padding:0 !important; }
+  .evoke-final-shell > .relative { width:100%; height:auto; min-height:100%; padding:88px 12px 16px; }
+  .evoke-final { height:auto; min-height:calc(100vh - 104px); grid-template-rows:minmax(0,1fr) auto; }
+  .evoke-final-hero { min-height:460px; grid-template-columns:1fr; }
+  .evoke-final-copy { align-self:center; padding:38px 14px; }
+  .evoke-final-copy h1 { font-size:clamp(70px,18vw,112px); }
+  .evoke-final-art-space { display:none; }
+  .evoke-final-cards { grid-template-columns:1fr; }
+  .evoke-final-card { min-height:104px; border-right:0; border-bottom:1px solid rgba(244,240,234,.14); padding:14px 18px; }
+  .evoke-final-card:last-child { border-bottom:0; }
+}
+
+/* Second scroll section: game selector layout from the supplied reference. */
+.evoke-games-section { position:relative; width:100%; min-height:min(82vh,900px); padding:36px 20px 18px; }
+.evoke-games-eyebrow { position:absolute; top:0; right:4%; color:rgba(255,255,255,.55); font:500 12px "IBM Plex Mono",monospace; letter-spacing:.08em; }
+.evoke-games-eyebrow span { display:inline-block; width:8px;height:8px;margin-right:12px;background:#ed1745; }
+.evoke-games-eyebrow b { color:#ed1745; padding:0 12px; }
+.evoke-games-title { max-width:1400px; margin:8px auto 12px; color:#f7f6f4; font:900 clamp(42px,5.4vw,92px)/.91 "Barlow Condensed",sans-serif; letter-spacing:.005em; text-transform:uppercase; text-shadow:0 2px 0 rgba(255,255,255,.24); }
+.evoke-games-title em { color:#ed1745; font-style:normal; }
+.evoke-games-description { max-width:1050px; margin:0 auto; color:rgba(255,255,255,.74); font:400 clamp(11px,1vw,16px)/1.55 "IBM Plex Mono",monospace; letter-spacing:.015em; }
+.evoke-game-grid { position:relative; inset:auto; width:94%; flex:0 0 auto; margin:4px auto 0; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:clamp(8px,1.5vw,24px); padding-top:8px; border-top:1px solid rgba(70,210,204,.36); }
+.evoke-game-card { --game-accent:#ed1745; min-width:0; display:flex; flex-direction:column; align-items:center; gap:8px; color:#f2f2f2; font:600 clamp(9px,.85vw,14px) "IBM Plex Mono",monospace; letter-spacing:.16em; white-space:nowrap; }
+.evoke-game-card:nth-child(2),.evoke-game-card:nth-child(5),.evoke-game-card:nth-child(7) { --game-accent:#00d6c5; }
+.evoke-game-card:nth-child(4) { --game-accent:#ff9b28; }
+.evoke-game-image { position:relative; width:100%; aspect-ratio:1.02; overflow:hidden; border:1px solid color-mix(in srgb,var(--game-accent) 80%,transparent); background:linear-gradient(135deg,rgba(255,255,255,.035),rgba(0,0,0,.44)); box-shadow:inset 0 0 34px rgba(0,0,0,.5); }
+.evoke-game-image img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.evoke-game-image::before,.evoke-game-image::after { content:""; position:absolute; width:12px;height:12px;border-color:var(--game-accent);border-style:solid; }
+.evoke-game-image::before { top:-1px;left:-1px;border-width:2px 0 0 2px; }
+.evoke-game-image::after { right:-1px;bottom:-1px;border-width:0 2px 2px 0; }
+.evoke-game-card i { width:30px;height:2px;background:var(--game-accent); }
+@media(max-width:760px) {
+  .evoke-games-section { min-height:86vh; justify-content:flex-start; padding:30px 12px 15px; }
+  .evoke-games-eyebrow { right:12px; font-size:9px; }
+  .evoke-games-title { font-size:clamp(34px,8.5vw,62px); margin:10px auto 12px; }
+  .evoke-games-description { font-size:9px; line-height:1.5; }
+  .evoke-game-grid { position:relative; inset:auto; width:100%; margin-top:4px; padding-top:6px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px 8px; }
+  .evoke-game-card { font-size:8px; letter-spacing:.08em; gap:6px; }
+}
+@media(max-width:760px) {
+  .evoke-story-shell { background-size:20vw 20vw,20vw 20vw,cover; }
+  .evoke-arrival { min-height:75vh; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:20px 8px 48px; }
+  .evoke-arrival-kicker { font-size:8px; letter-spacing:.15em; gap:7px; }
+  .evoke-arrival-kicker img { width:30px;height:30px; }
+  .evoke-arrival-title { font-size:clamp(42px,12vw,84px); letter-spacing:-.07em; }
+  .evoke-arrival-title > span { white-space:normal; }
+  .evoke-arrival-bottom { align-items:flex-start; flex-direction:column; }
+  .evoke-arrival-side { display:none; }
+  .evoke-arrival-meta { left:8px; right:8px; bottom:2px; font-size:7px; letter-spacing:.12em; }
 }

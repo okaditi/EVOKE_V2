@@ -3,7 +3,6 @@ import { Evoke3DExperience } from '../scene/setupScene';
 import { InteractiveObjectId, EsportsGameId, PlayerProfile } from '../types';
 import { soundscape } from '../utils/audio';
 import { getStoredSession, clearSession } from '../utils/auth';
-import { FixedBackgroundVideo } from './FixedBackgroundVideo';
 import { FirstScreenOverlay } from './FirstScreenOverlay';
 import { CinematicScrollStory } from './CinematicScrollStory';
 import { InteractiveTooltip } from './InteractiveTooltip';
@@ -298,10 +297,6 @@ export const SpatialScene: React.FC = () => {
       {/* FIXED ESPORTS BACKGROUND VIDEO                            */}
       {/* Does NOT move on scroll, occupies 100% background across  */}
       {/* subsequent screens (Story stages 1-5, and Waitlist)       */}
-      {/* Fades out on Screen 1 so the character & setup are focus  */}
-      {/* ========================================================= */}
-      <FixedBackgroundVideo scrollProgress={scrollProgress} />
-
       {/* Top Floating Minimal Sticky Navigation with Auth state */}
       <Navigation
         onOpenWaitlist={() => setIsWaitlistOpen(true)}

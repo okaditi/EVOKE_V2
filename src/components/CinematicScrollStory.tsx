@@ -2,18 +2,15 @@ import React, { useState } from 'react';
 import {
   ArrowRight,
   Sparkles,
-  Zap,
   Shield,
-  Trophy,
   Activity,
   Users,
   Award,
   Flame,
   Sword,
-  RefreshCw,
   Crosshair,
-  Layers,
-  Radio,
+  Swords,
+  Target,
 } from 'lucide-react';
 import { soundscape } from '../utils/audio';
 
@@ -208,11 +205,13 @@ export const CinematicScrollStory: React.FC<CinematicScrollStoryProps> = ({
 
   return (
     <div
-      className="fixed inset-0 pointer-events-none select-none z-30 flex items-center justify-center px-4 pt-20 pb-8"
+      className={`evoke-story-shell fixed inset-0 pointer-events-none select-none z-30 flex items-center justify-center px-4 pt-20 pb-8 ${p >= 0.84 ? 'evoke-final-shell' : ''}`}
       style={{
         backgroundColor: `rgba(12, 10, 16, ${bgOpacity})`,
       }}
     >
+      <div className="evoke-story-grid absolute inset-0 pointer-events-none" />
+      <div className="evoke-story-frame absolute inset-3 sm:inset-[18px] pointer-events-none" />
       {/* Background Ambient Glow */}
       <div
         className="theme-story-aura absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vw] max-w-[800px] max-h-[800px] rounded-full blur-[140px] pointer-events-none transition-opacity duration-500"
@@ -222,70 +221,42 @@ export const CinematicScrollStory: React.FC<CinematicScrollStoryProps> = ({
 
 
       {/* Main Container - Ensures centered view without blocking touch scroll */}
-      <div className="relative w-full max-w-5xl flex items-center justify-center py-2 pointer-events-none">
+      <div className={`relative w-full ${s5Opacity > 0.01 ? 'max-w-[1740px]' : s1Opacity > 0.01 ? 'max-w-[1740px]' : 'max-w-5xl'} flex items-center justify-center py-2 pointer-events-none`}>
         {/* ========================================================= */}
-        {/* STAGE 1: MORE THAN A GAME.                                */}
+        {/* STAGE 1: EXPLORE THE GAMES.                               */}
         {/* ========================================================= */}
         {s1Opacity > 0.01 && (
           <div
-            className="w-full flex flex-col items-center text-center px-2 sm:px-6 pointer-events-auto transition-all duration-300 ease-out"
+            className="evoke-games-section w-full flex flex-col items-center text-center px-2 sm:px-6 pointer-events-auto transition-all duration-300 ease-out"
             style={{
               opacity: s1Opacity,
               transform: `translate3d(0, ${s1Y}px, 0) scale(${s1Scale})`,
             }}
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 mb-3 border border-[#A62B5F]/40 bg-[#A62B5F]/15 backdrop-blur-md rounded-full">
-              <Radio className="w-3.5 h-3.5 theme-accent-text animate-pulse" />
-              <span className="theme-accent-text font-mono font-bold text-[10px] sm:text-xs tracking-[0.3em] uppercase">
-                GENESIS VOXEL INFRASTRUCTURE
-              </span>
-            </div>
-
-            <h2 className="font-display font-black text-3xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tight text-[#F4F0EA] uppercase leading-tight text-glow">
-              MORE THAN <span className="theme-accent-text">A GAME.</span>
+            <h2 className="evoke-games-title">
+              EXPLORE THE GAMES WHERE<br className="hidden md:block" /> SKILL, <em>STRATEGY</em>, AND TEAMWORK<br className="hidden md:block" /> COLLIDE<span className="theme-highlight-text">.</span>
             </h2>
 
-            <p className="mt-2 sm:mt-3 max-w-xl text-xs sm:text-sm text-[#F4F0EA]/80 font-sans leading-relaxed">
-              EVOKE merges high-precision tactical esports mechanics with fully destructible voxel environments and kernel-validated competitive anti-cheat.
+            <p className="evoke-games-description">
+              From tactical shooters to battle royale, football simulation, and fighting games,<br className="hidden lg:block" /> every title here represents a different kind of esports mastery. Choose your<br className="hidden lg:block" /> battlefield and study the skills that win rounds, matches, and championships.
             </p>
 
-            {/* 4 Telemetry Cards Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6 w-full max-w-4xl">
-              <div className="p-3.5 sm:p-4 border border-white/15 bg-[#17141C]/85 backdrop-blur-md hover:border-[#A62B5F]/60 transition-all text-left">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Zap className="w-4 h-4 theme-accent-text" />
-                  <span className="font-mono text-[9px] text-[#F4F0EA]/50">NET-TICK</span>
+            <div className="evoke-game-grid">
+              {[
+                { name: 'VALORANT', image: '/assets/Neon Valorant Voxel Agent Banner.png' },
+                { name: 'CS2', image: '/assets/Voxel CS2 Tactical Assault.png' },
+                { name: 'BGMI', image: '/assets/BGMI Voxel Battle Banner.png' },
+                { name: 'FORTNITE', image: '/assets/Neon Voxel Fortnite Battle Scene.png' },
+                { name: 'MORTAL KOMBAT', image: '/assets/Scorpion’s Flaming MK11 Assault.png' },
+                { name: 'EA FC', image: '/assets/Neon EA FC Voxel Esports Banner.png' },
+              ].map((game, index) => (
+                <div className={`evoke-game-card evoke-game-card-${index + 1}`} key={game.name}>
+                  <div className="evoke-game-image">
+                    <img src={game.image} alt={`${game.name} game artwork`} />
+                  </div>
+                  <span>{game.name}</span><i />
                 </div>
-                <div className="font-display font-black text-lg sm:text-xl text-[#F4F0EA]">128 TICK</div>
-                <div className="font-mono text-[10px] theme-highlight-text mt-0.5">14ms Global Sub-Tick</div>
-              </div>
-
-              <div className="p-3.5 sm:p-4 border border-white/15 bg-[#17141C]/85 backdrop-blur-md hover:border-[#A62B5F]/60 transition-all text-left">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Layers className="w-4 h-4 theme-highlight-text" />
-                  <span className="font-mono text-[9px] text-[#F4F0EA]/50">PHYSICS</span>
-                </div>
-                <div className="font-display font-black text-lg sm:text-xl text-[#F4F0EA]">VOXEL 4.0</div>
-                <div className="font-mono text-[10px] theme-accent-text mt-0.5">Ray-Traced Destruction</div>
-              </div>
-
-              <div className="p-3.5 sm:p-4 border border-white/15 bg-[#17141C]/85 backdrop-blur-md hover:border-[#A62B5F]/60 transition-all text-left">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Shield className="w-4 h-4 text-emerald-400" />
-                  <span className="font-mono text-[9px] text-[#F4F0EA]/50">SECURITY</span>
-                </div>
-                <div className="font-display font-black text-lg sm:text-xl text-[#F4F0EA]">KERNEL AI</div>
-                <div className="font-mono text-[10px] text-emerald-400 mt-0.5">Active Behavioral Anticheat</div>
-              </div>
-
-              <div className="p-3.5 sm:p-4 border border-white/15 bg-[#17141C]/85 backdrop-blur-md hover:border-[#A62B5F]/60 transition-all text-left">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Trophy className="w-4 h-4 theme-highlight-text" />
-                  <span className="font-mono text-[9px] text-[#F4F0EA]/50">PRIZE POOL</span>
-                </div>
-                <div className="font-display font-black text-lg sm:text-xl text-[#F4F0EA]">$2.5M USD</div>
-                <div className="font-mono text-[10px] theme-highlight-text mt-0.5">Genesis Circuit Launch</div>
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -553,79 +524,27 @@ export const CinematicScrollStory: React.FC<CinematicScrollStoryProps> = ({
         )}
 
         {/* ========================================================= */}
-        {/* STAGE 5: FINAL ARRIVAL & JOIN THE WAITLIST                 */}
-        {/* ========================================================= */}
         {s5Opacity > 0.01 && (
-          <div
-            className="w-full flex flex-col items-center text-center px-2 sm:px-6 pointer-events-auto transition-all duration-300 ease-out"
-            style={{
-              opacity: s5Opacity,
-              transform: `translate3d(0, ${s5Y}px, 0) scale(${s5Scale})`,
-            }}
-          >
-            {/* Minimal Header */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-[1px] w-8 sm:w-12 theme-accent-bg" />
-              <span className="font-mono font-bold text-[10px] sm:text-xs tracking-[0.35em] uppercase theme-accent-text">
-                GENESIS ALPHA DISCOVERY
-              </span>
-              <div className="h-[1px] w-8 sm:w-12 theme-accent-bg" />
+          <section className="evoke-final w-full pointer-events-auto" style={{ opacity: s5Opacity, transform: `translate3d(0, ${s5Y}px, 0) scale(${s5Scale})` }}>
+            <div className="evoke-final-hero">
+              <div className="evoke-final-copy">
+                <div className="evoke-final-kicker"><span>01&nbsp; 01</span><i /> A HIGHER TOMORROW</div>
+                <h1>PLAY<span>.</span><br />PROVE<span>.</span><br />PROGRESS<span>.</span></h1>
+                <div className="evoke-final-rule" />
+              </div>
+              <div className="evoke-final-art-space" aria-label="Background artwork area" />
             </div>
-
-            {/* Seamless Merging LOGO.png Image & Title Header */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 mb-2">
-              <img
-                src="/assets/LOGO.png"
-                alt="EVOKE ESPORTS Logo"
-                className="h-16 sm:h-20 md:h-24 w-auto object-contain filter drop-shadow-[0_0_35px_rgba(166,43,95,0.75)]"
-              />
-              <h1 className="font-display font-black text-4xl sm:text-6xl md:text-7xl tracking-[0.12em] text-[#F4F0EA] uppercase leading-none text-glow">
-                EVOKE ESPORTS
-              </h1>
+            <div className="evoke-final-cards">
+              {[
+                { title: 'COMPETE', desc: 'Tournaments, ranked play and real opportunities.', icon: Swords, n: '01' },
+                { title: 'PRACTICE', desc: 'Sharpen your skills with tools, scrims and training.', icon: Target, n: '02' },
+                { title: 'COMMUNITY', desc: 'Players, creators and teams growing together.', icon: Users, n: '03' },
+              ].map(({ title, desc, icon: Icon, n }) => <button className="evoke-final-card" key={title} onClick={onOpenWaitlist}>
+                <span className="evoke-final-card-icon"><Icon /></span><span className="evoke-final-card-copy"><b>{title}</b><small>{desc}</small></span>
+                <span className="evoke-final-card-number">{n}</span><ArrowRight className="evoke-final-card-arrow" />
+              </button>)}
             </div>
-
-            {/* Creed Triad */}
-            <div className="mt-1 font-display font-extrabold text-sm sm:text-lg tracking-[0.3em] theme-accent-text uppercase">
-              PLAY. <span className="text-[#F4F0EA]">PROVE.</span> PROGRESS.
-            </div>
-
-            <p className="mt-2 max-w-md text-xs sm:text-sm text-[#F4F0EA]/80 font-sans leading-relaxed">
-              The next evolution in tactical voxel esports. Claim your Genesis Founder Pass today to secure instant closed alpha access and exclusive weapon skins.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
-              <button
-                onClick={() => {
-                  soundscape.playClick(1500);
-                  onOpenWaitlist();
-                }}
-                className="group relative inline-flex items-center gap-2.5 theme-accent-gradient hover:brightness-110 text-[#F4F0EA] px-7 sm:px-9 py-3.5 border-2 theme-accent-border font-mono font-extrabold text-xs tracking-[0.2em] uppercase transition-all duration-200 transform hover:scale-105 active:scale-95 theme-accent-glow cursor-pointer shadow-lg"
-              >
-                <Sparkles className="w-4 h-4 text-[#F4F0EA]" />
-                <span>CLAIM ALPHA ACCESS PASS</span>
-                <ArrowRight className="w-4 h-4 text-[#F4F0EA] transition-transform duration-200 group-hover:translate-x-1" />
-              </button>
-
-              <button
-                onClick={() => {
-                  soundscape.playClick(900);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="inline-flex items-center gap-2 px-5 py-3.5 border border-white/20 bg-[#17141C]/80 hover:bg-white/10 text-[#F4F0EA] font-mono text-xs font-bold tracking-widest uppercase transition-all cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 theme-highlight-text" />
-                <span>REVISIT 3D BATTLESTATION</span>
-              </button>
-            </div>
-
-            {/* Roster claim count subtext */}
-            <div className="mt-6 flex items-center gap-3 font-mono text-[10px] tracking-[0.2em] text-[#F4F0EA]/60 uppercase">
-              <span>GENESIS ALPHA PROTOCOL</span>
-              <span className="theme-accent-text">•</span>
-              <span className="text-emerald-400 font-bold">18,492 / 20,000 PASSES CLAIMED</span>
-            </div>
-          </div>
+          </section>
         )}
       </div>
     </div>
